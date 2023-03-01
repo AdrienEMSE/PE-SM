@@ -1,102 +1,59 @@
-#include <TinyGPSPlus.h>
-#include <SoftwareSerial.h>
-/*
-   This sample code demonstrates the normal use of a TinyGPSPlus (TinyGPSPlus) object.
-   It requires the use of SoftwareSerial, and assumes that you have a
-   4800-baud serial GPS device hooked up on pins 4(rx) and 3(tx).
-*/
-static const int RXPin = 4, TXPin = 7;
-static const uint32_t GPSBaud = 9600;
+#include <Arduino.h>
+#include <Adafruit_CCS811.h>            // include library for CCS811 - Sensor from martin-pennings https://github.com/maarten-pennings/CCS811
+#include <Adafruit_BMP280.h>            // include main library for BMP280 - Sensor
+#include <Wire.h>                       // This library allows you to communicate with I2C
 
-// The TinyGPSPlus object
-TinyGPSPlus gps;
-
-// The serial connection to the GPS device
-SoftwareSerial ss(RXPin, TXPin);
-
-// This custom version of delay() ensures that the gps object
-// is being "fed".
-static void smartDelay(unsigned long ms)
-{
-  unsigned long start = millis();
-  do 
-  {
-    while (ss.available())
-      gps.encode(ss.read());
-  } while (millis() - start < ms);
-}
+Adafruit_CCS811 ccs;
+Adafruit_BMP280 bmp280;                // I2C
 
 
-static void printInt(unsigned long val, bool valid, int len)
-{
-  char sz[32] = "*****************";
-  if (valid)
-    sprintf(sz, "%ld", val);
-  sz[len] = 0;
-  for (int i=strlen(sz); i<len; ++i)
-    sz[i] = ' ';
-  if (len > 0) 
-    sz[len-1] = ' ';
-  Serial.print(sz);
-  smartDelay(0);
-}
-
-static void printDateTime(TinyGPSDate &d, TinyGPSTime &t)
-{
-  if (!d.isValid())
-  {
-    Serial.print(F("********** "));
-  }
-  else
-  {
-    char sz[32];
-    sprintf(sz, "%02d/%02d/%02d ", d.month(), d.day(), d.year());
-    Serial.print(sz);
-  }
-  
-  if (!t.isValid())
-  {
-    Serial.print(F("******** "));
-  }
-  else
-  {
-    char sz[32];
-    sprintf(sz, "%02d:%02d:%02d ", t.hour(), t.minute(), t.second());
-    Serial.print(sz);
-  }
-
-  printInt(d.age(), d.isValid(), 5);
-  smartDelay(0);
-}
-
-static void printStr(const char *str, int len)
-{
-  int slen = strlen(str);
-  for (int i=0; i<len; ++i)
-    Serial.print(i<slen ? str[i] : ' ');
-  smartDelay(0);
-}
-
-void setup()
-{
+void setup() {
+//  
   Serial.begin(9600);
-  ss.begin(GPSBaud);
+  // Enable I2C
+  Wire.begin();                  // put here the Pins of I2C
+  Serial.println("CCS811 test");      /* --- SETUP CCS811 on 0x5A ------ */
+  if(!ccs.begin()){
+    Serial.println("Failed to start sensor! Please check your wiring.");
+    while(1);
+  }
+  while(!ccs.available());
 
- 
-}
-
-void loop()
-{
- ;
 
 
-  printDateTime(gps.date, gps.time);
-  Serial.println();
+  Serial.println("BMP280 test");     /* --- SETUP BMP on 0x76 ------ */
+  if (!bmp280.begin(0x76)) {
+    Serial.println("Could not find a valid BMP280 sensor, check wiring!");
+    while (true);
+  }
+
+
   
-  smartDelay(1000);
-
-  if (millis() > 5000 && gps.charsProcessed() < 10)
-    Serial.println(F("No GPS data received: check wiring"));
 }
 
+void loop() {
+  
+  Serial.print("BMP280 => Temperature = ");
+  Serial.print(bmp280.readTemperature());
+  Serial.print(" °C, ");
 
+  Serial.print("Pressure = ");
+  Serial.print(bmp280.readPressure() / 100);
+  Serial.println(" Pa, ");
+
+
+
+  if(ccs.available()){
+    if(!ccs.readData()){
+      Serial.print("CO2: ");
+      Serial.print(ccs.geteCO2());
+      Serial.print("ppm, TVOC: ");
+      Serial.println(ccs.getTVOC());
+    }
+    else{
+      Serial.println("ERROR!");
+      while(1);
+    }
+  }
+  delay(5000);
+}
