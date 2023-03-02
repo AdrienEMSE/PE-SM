@@ -1,23 +1,24 @@
 #include <Arduino.h>
-#include <Adafruit_CCS811.h>            // include library for CCS811 - Sensor from martin-pennings https://github.com/maarten-pennings/CCS811
-#include <Adafruit_BMP280.h>            // include main library for BMP280 - Sensor
-#include <Wire.h>                       // This library allows you to communicate with I2C
 
-Adafruit_CCS811 ccs;
-Adafruit_BMP280 bmp280;                // I2C
 
-uint32_t pinPluvioAnalog = A0;
-uint32_t pinPluvioGPIO = D7;
-float seuil_haut = 815.0; // no rain
-float seuil_bas = 425.0; // full rain
+HardwareSerial Serial6(D0,D1);
+
+
+typedef struct _msg_ESP
+{
+  float_t val1;
+  uint32_t val2;
+}msg_ESP;
+
+msg_ESP tosend;
+msg_ESP toreceive;
 
 void setup() {
 //  
   Serial.begin(9600);
-  pinMode(pinPluvioAnalog,INPUT_ANALOG);
-  pinMode(pinPluvioGPIO,INPUT_PULLDOWN);
-
-
+  Serial6.begin(115200);
+  tosend.val1 = PI;
+  tosend.val2 = 0;
 
 
 
@@ -26,19 +27,17 @@ void setup() {
 
 void loop() {
 
-  uint32_t rain_read = analogRead(pinPluvioAnalog);
-  int rain_GPIO = digitalRead(pinPluvioGPIO);
-  float rainPercent = (seuil_haut/(seuil_haut-seuil_bas)) -((float)rain_read)/(seuil_haut-seuil_bas);
-  if(rainPercent > 1.0)
-    rainPercent = 1.0;
-  else if (rainPercent < 0.0)
-    rainPercent = 0.0;
-  Serial.print("rain_raw :");
-  Serial.print(rain_read);
-  Serial.print(" GPIO : ");
-  Serial.print(!rain_GPIO); // read GPIO at 1 when no rain, 0 when rain
-  Serial.print(" rain % : ");
-  Serial.println( rainPercent );
+  tosend.val2++;
+
+  Serial.println("sending msg_ESP to esp");
+  Serial6.write((uint8_t *)&tosend,sizeof(msg_ESP));
+  // while (Serial6.available() == 0) {}     //wait for data available
+  // Serial6.readBytes((uint8_t*)&toreceive,sizeof(msg_ESP));      // remove any \r \n whitespace at the end of the String
+  
+  // Serial.print("received struct with : val1 = ");
+  // Serial.print(toreceive.val1);
+  // Serial.print(" val2 = ");
+  // Serial.println(toreceive.val2);
 
   delay(1000);
   
