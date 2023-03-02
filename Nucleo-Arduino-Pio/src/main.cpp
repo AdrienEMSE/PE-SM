@@ -6,6 +6,7 @@
 #include <DHT.h>
 #include <DHT_U.h>
 #include <Arduino.h>
+
 #include <SPI.h>
 #include <Adafruit_MLX90614.h>
 #include <Adafruit_CCS811.h>            // include library for CCS811 - Sensor from martin-pennings https://github.com/maarten-pennings/CCS811
@@ -44,10 +45,17 @@ Adafruit_CCS811 ccs;
 Adafruit_BMP280 bmp280;                // I2C
 ClosedCube_HDC1080 hdc1080;
 
-uint32_t pinPluvioAnalog = A0;
-uint32_t pinPluvioGPIO = D7;
-float seuil_haut = 815.0; // no rain
-float seuil_bas = 425.0; // full rain
+HardwareSerial Serial6(D0,D1);
+
+
+typedef struct _msg_ESP
+{
+  float_t val1;
+  uint32_t val2;
+}msg_ESP;
+
+msg_ESP tosend;
+msg_ESP toreceive;
 
 void printSerialNumber() {
 	Serial.print("Device Serial Number=");
@@ -123,6 +131,9 @@ static void printStr(const char *str, int len)
 void setup() {
 
   Serial.begin(9600);
+  Serial6.begin(115200);
+  tosend.val1 = PI;
+  tosend.val2 = 0;
 
 
   while (!Serial);
@@ -170,6 +181,17 @@ void setup() {
 
 void loop() {
 
+  tosend.val2++;
+
+  Serial.println("sending msg_ESP to esp");
+  Serial6.write((uint8_t *)&tosend,sizeof(msg_ESP));
+  // while (Serial6.available() == 0) {}     //wait for data available
+  // Serial6.readBytes((uint8_t*)&toreceive,sizeof(msg_ESP));      // remove any \r \n whitespace at the end of the String
+  
+  // Serial.print("received struct with : val1 = ");
+  // Serial.print(toreceive.val1);
+  // Serial.print(" val2 = ");
+  // Serial.println(toreceive.val2);
   printDateTime(gps.date, gps.time);
   Serial.println();
   
