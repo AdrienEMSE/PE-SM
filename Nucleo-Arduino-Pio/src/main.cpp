@@ -1,4 +1,5 @@
-
+#include <Wire.h>
+#include "Adafruit_VEML6070.h"
 #include <Adafruit_Sensor.h>
 #include <DHT.h>
 #include <DHT_U.h>
@@ -25,7 +26,7 @@ DHT_Unified capteurTempHum(DHTPIN, DHTTYPE);
 uint32_t delayMS;
 
 
-
+Adafruit_VEML6070 capteurUV = Adafruit_VEML6070(); //une résistance de RSET=270kOhms est soudée sur le capteur
 Adafruit_MLX90614 capteurTempCiel = Adafruit_MLX90614(); //par défaut addr=0x5A
 
 Adafruit_CCS811 ccs;
@@ -51,6 +52,9 @@ void setup() {
 
 
   while (!Serial);
+
+  Serial.println("VEML6070 Test");
+  capteurUV.begin(VEML6070_1_T);  // clear ACK's et écrit 0x06 dans le registre de commande conformement au mode d'emploi
 
   capteurTempHum.begin();
   Serial.println(F("DHTxx Unified Sensor Example"));
@@ -89,7 +93,14 @@ void setup() {
   
 }
 
+
 void loop() {
+  
+  Serial.print("UV light level: "); Serial.println(capteurUV.readUV()); //pour interpréter: https://www.vishay.com/docs/84310/designingveml6070.pdf page 5
+  capteurUV.sleep(true); //diminue la conso à 1 microA
+  delay(1000);
+  capteurUV.sleep(false); //pas besoin de réinitialiser
+  }
 
   //attention fonctionnement de la librairie basé sur HAL_GetTick (parce que protocole de communication non conventionnel)
   //en particulier pour vérifier que 2s se sont écoulées depuis le dernier échantillonnage
