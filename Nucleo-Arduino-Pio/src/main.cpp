@@ -16,6 +16,11 @@
 
 #include <Wire.h>                       // This library allows you to communicate with I2C
 
+uint32_t pinPluvioAnalog = A0;
+uint32_t pinPluvioGPIO = D7;
+float seuil_haut = 815.0; // no rain
+float seuil_bas = 425.0; // full rain
+
 static const int RXPin = 4, TXPin = 7;
 static const uint32_t GPSBaud = 9600;
 
@@ -152,7 +157,7 @@ void setup() {
   {
     Serial.println("Error connecting to MLX sensor. Check wiring.");
     while (1);
-  };
+  }
 
   pinMode(pinPluvioAnalog,INPUT_ANALOG);
   pinMode(pinPluvioGPIO,INPUT_PULLDOWN);
