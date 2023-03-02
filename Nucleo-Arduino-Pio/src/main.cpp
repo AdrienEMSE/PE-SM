@@ -1,10 +1,14 @@
 #include <Arduino.h>
+#include <SPI.h>
+#include <Adafruit_MLX90614.h>
 #include <Adafruit_CCS811.h>            // include library for CCS811 - Sensor from martin-pennings https://github.com/maarten-pennings/CCS811
 #include <Adafruit_BMP280.h>            // include main library for BMP280 - Sensor
 #include "ClosedCube_HDC1080.h"
 
 
 #include <Wire.h>                       // This library allows you to communicate with I2C
+
+Adafruit_MLX90614 capteurTempCiel = Adafruit_MLX90614(); //par défaut addr=0x5A
 
 Adafruit_CCS811 ccs;
 Adafruit_BMP280 bmp280;                // I2C
@@ -14,6 +18,7 @@ uint32_t pinPluvioAnalog = A0;
 uint32_t pinPluvioGPIO = D7;
 float seuil_haut = 815.0; // no rain
 float seuil_bas = 425.0; // full rain
+
 void printSerialNumber() {
 	Serial.print("Device Serial Number=");
 	HDC1080_SerialNumber sernum = hdc1080.readSerialNumber();
@@ -23,8 +28,21 @@ void printSerialNumber() {
 }
 
 void setup() {
-//  
+
   Serial.begin(9600);
+
+
+  while (!Serial);
+
+  Serial.println("Adafruit MLX90614 Emissivity Setter.\n");
+
+  // init sensor
+  if (!capteurTempCiel.begin()) //il faut re-init si on coupe l'alimentation au capteur (en premiere approche)
+  {
+    Serial.println("Error connecting to MLX sensor. Check wiring.");
+    while (1);
+  };
+
   pinMode(pinPluvioAnalog,INPUT_ANALOG);
   pinMode(pinPluvioGPIO,INPUT_PULLDOWN);
 
@@ -50,6 +68,12 @@ void setup() {
 }
 
 void loop() {
+
+  Serial.print("Temperature Objet:"); //celle à utiliser avec capteur pointé vers le ciel
+  Serial.println(capteurTempCiel.readObjectTempC());
+  Serial.print("Temperature Ambiente:");
+  Serial.println(capteurTempCiel.readAmbientTempC());
+  delay(1000);
 
   uint32_t rain_read = analogRead(pinPluvioAnalog);
   int rain_GPIO = digitalRead(pinPluvioGPIO);
@@ -94,3 +118,4 @@ void loop() {
   }
   delay(5000);
 }
+
