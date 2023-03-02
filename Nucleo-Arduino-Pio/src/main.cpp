@@ -178,11 +178,12 @@ void loop() {
   if (millis() > 5000 && gps.charsProcessed() < 10)
     Serial.println(F("No GPS data received: check wiring"));
   
-  Serial.print("UV light level: "); Serial.println(capteurUV.readUV()); //pour interpréter: https://www.vishay.com/docs/84310/designingveml6070.pdf page 5
+  Serial.print("UV light level: "); 
+  Serial.println(capteurUV.readUV()); //pour interpréter: https://www.vishay.com/docs/84310/designingveml6070.pdf page 5
   capteurUV.sleep(true); //diminue la conso à 1 microA
   delay(1000);
   capteurUV.sleep(false); //pas besoin de réinitialiser
-  }
+  
 
   //attention fonctionnement de la librairie basé sur HAL_GetTick (parce que protocole de communication non conventionnel)
   //en particulier pour vérifier que 2s se sont écoulées depuis le dernier échantillonnage
