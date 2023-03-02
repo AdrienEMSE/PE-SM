@@ -10,6 +10,10 @@ Adafruit_CCS811 ccs;
 Adafruit_BMP280 bmp280;                // I2C
 ClosedCube_HDC1080 hdc1080;
 
+uint32_t pinPluvioAnalog = A0;
+uint32_t pinPluvioGPIO = D7;
+float seuil_haut = 815.0; // no rain
+float seuil_bas = 425.0; // full rain
 void printSerialNumber() {
 	Serial.print("Device Serial Number=");
 	HDC1080_SerialNumber sernum = hdc1080.readSerialNumber();
@@ -21,22 +25,11 @@ void printSerialNumber() {
 void setup() {
 //  
   Serial.begin(9600);
-  // Enable I2C
-  Wire.begin();                  // put here the Pins of I2C
-  Serial.println("CCS811 test");      /* --- SETUP CCS811 on 0x5A ------ */
-  if(!ccs.begin()){
-    Serial.println("Failed to start sensor! Please check your wiring.");
-    while(1);
-  }
-  while(!ccs.available());
+  pinMode(pinPluvioAnalog,INPUT_ANALOG);
+  pinMode(pinPluvioGPIO,INPUT_PULLDOWN);
 
 
 
-  Serial.println("BMP280 test");     /* --- SETUP BMP on 0x76 ------ */
-  if (!bmp280.begin(0x76)) {
-    Serial.println("Could not find a valid BMP280 sensor, check wiring!");
-    while (true);
-  }
 
 	Serial.println("ClosedCube HDC1080 Arduino Test");
 
@@ -57,10 +50,23 @@ void setup() {
 }
 
 void loop() {
+
+  uint32_t rain_read = analogRead(pinPluvioAnalog);
+  int rain_GPIO = digitalRead(pinPluvioGPIO);
+  float rainPercent = (seuil_haut/(seuil_haut-seuil_bas)) -((float)rain_read)/(seuil_haut-seuil_bas);
+  if(rainPercent > 1.0)
+    rainPercent = 1.0;
+  else if (rainPercent < 0.0)
+    rainPercent = 0.0;
+  Serial.print("rain_raw :");
+  Serial.print(rain_read);
+  Serial.print(" GPIO : ");
+  Serial.print(!rain_GPIO); // read GPIO at 1 when no rain, 0 when rain
+  Serial.print(" rain % : ");
+  Serial.println( rainPercent );
+
+  delay(1000);
   
-  Serial.print("BMP280 => Temperature = ");
-  Serial.print(bmp280.readTemperature());
-  Serial.print(" °C, ");
 
   Serial.print("Pressure = ");
   Serial.print(bmp280.readPressure() / 100);
