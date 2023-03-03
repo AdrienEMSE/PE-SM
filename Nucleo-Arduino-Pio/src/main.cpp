@@ -31,6 +31,8 @@ float seuil_bas = 425.0; // beaucoup de pluie
 static const int RXPin = 4, TXPin = 7; // PIN Liaison série GPS
 static const uint32_t GPSBaud = 9600;  // BAUD GPS
 
+static const int sleep_gpio_ccs_Pin = D5;
+
 
 TinyGPSPlus gps; // GPS
 SoftwareSerial ss(RXPin, TXPin); // Liaison série vers GPS
@@ -83,6 +85,7 @@ void setup() {
   ss.begin(GPSBaud); // Liaison serie GPS
   Wire2.begin(); // I2C Skytemp
 
+
   while (!Serial); // Atente de l'ouverture de Serial
 
   Serial.println("VEML6070 Test");
@@ -105,6 +108,8 @@ void setup() {
     while(1);
   }
   while(!ccs.available());
+  ccs.setDriveMode(CCS811_DRIVE_MODE_60SEC);
+  pinMode(sleep_gpio_ccs_Pin,HIGH);
 
 
   Serial.println("BMP280 test");     /* --- SETUP BMP on 0x76 ------ */
@@ -165,7 +170,7 @@ void loop() {
   }
 
 
-
+  capteurTempCiel.begin(0x69,&Wire2);
   Serial.print("Temperature Objet:"); //celle à utiliser avec capteur pointé vers le ciel
   Serial.println(capteurTempCiel.readObjectTempC());
   Serial.print("Temperature Ambiente:");
@@ -186,6 +191,8 @@ void loop() {
   Serial.print(" rain % : ");
   Serial.println( rainPercent );
 
+
+
   Serial.print("Pressure = ");
   Serial.print(bmp280.readPressure() / 100);
   Serial.println(" Pa, ");
@@ -199,6 +206,7 @@ void loop() {
 	Serial.print(hdc1080.readHumidity());
 	Serial.println("%");
 
+  pinMode(sleep_gpio_ccs_Pin,LOW);
   if(ccs.available()){
     if(!ccs.readData()){
       Serial.print("CO2: ");
@@ -211,11 +219,14 @@ void loop() {
       while(1);
     }
   }
+  pinMode(sleep_gpio_ccs_Pin,HIGH);
     
-    smartDelay(10000);
-    printDateTime(gps.date,gps.time);
-    Serial.println();
-}
+  smartDelay(10000);
+  printDateTime(gps.date,gps.time);
+  Serial.println();
+
+  delay(50000);
+  }
 
 
 /*---------------------Fonctions utilitaires----------------------*/
