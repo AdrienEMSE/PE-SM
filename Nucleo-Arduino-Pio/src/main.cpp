@@ -1,90 +1,84 @@
 #include <Arduino.h>
-#include <Adafruit_CCS811.h>            // include library for CCS811 - Sensor from martin-pennings https://github.com/maarten-pennings/CCS811
-#include <Adafruit_BMP280.h>            // include main library for BMP280 - Sensor
-#include "ClosedCube_HDC1080.h"
-
-
-#include <Wire.h>                       // This library allows you to communicate with I2C
-
-Adafruit_CCS811 ccs;
-Adafruit_BMP280 bmp280;                // I2C
-ClosedCube_HDC1080 hdc1080;
-
-void printSerialNumber() {
-	Serial.print("Device Serial Number=");
-	HDC1080_SerialNumber sernum = hdc1080.readSerialNumber();
-	char format[12];
-	sprintf(format, "%02X-%04X-%04X", sernum.serialFirst, sernum.serialMid, sernum.serialLast);
-	Serial.println(format);
-}
-
-void setup() {
-//  
-  Serial.begin(9600);
-  // Enable I2C
-  Wire.begin();                  // put here the Pins of I2C
-  Serial.println("CCS811 test");      /* --- SETUP CCS811 on 0x5A ------ */
-  if(!ccs.begin()){
-    Serial.println("Failed to start sensor! Please check your wiring.");
-    while(1);
-  }
-  while(!ccs.available());
-
-
-
-  Serial.println("BMP280 test");     /* --- SETUP BMP on 0x76 ------ */
-  if (!bmp280.begin(0x76)) {
-    Serial.println("Could not find a valid BMP280 sensor, check wiring!");
-    while (true);
-  }
-
-	Serial.println("ClosedCube HDC1080 Arduino Test");
-
-	// Default settings: 
-	//  - Heater off
-	//  - 14 bit Temperature and Humidity Measurement Resolutions
-	hdc1080.begin(0x40);
-
-	Serial.print("Manufacturer ID=0x");
-	Serial.println(hdc1080.readManufacturerId(), HEX); // 0x5449 ID of Texas Instruments
-	Serial.print("Device ID=0x");
-	Serial.println(hdc1080.readDeviceId(), HEX); // 0x1050 ID of the device
-	
-	printSerialNumber();
- 
-
-  
-}
-
-void loop() {
-  
-  Serial.print("BMP280 => Temperature = ");
-  Serial.print(bmp280.readTemperature());
-  Serial.print(" °C, ");
-
-  Serial.print("Pressure = ");
-  Serial.print(bmp280.readPressure() / 100);
-  Serial.println(" Pa, ");
-
-	Serial.print("T=");
-	Serial.print(hdc1080.readTemperature());
-	Serial.print("C, RH=");
-	Serial.print(hdc1080.readHumidity());
-	Serial.println("%");
-
-
-
-  if(ccs.available()){
-    if(!ccs.readData()){
-      Serial.print("CO2: ");
-      Serial.print(ccs.geteCO2());
-      Serial.print("ppm, TVOC: ");
-      Serial.println(ccs.getTVOC());
+    // --------------------------------------
+    // i2c_scanner
+    //
+    // Version 1
+    //    This program (or code that looks like it)
+    //    can be found in many places.
+    //    For example on the Arduino.cc forum.
+    //    The original author is not know.
+    // Version 2, Juni 2012, Using Arduino 1.0.1
+    //     Adapted to be as simple as possible by Arduino.cc user Krodal
+    // Version 3, Feb 26  2013
+    //    V3 by louarnold
+    // Version 4, March 3, 2013, Using Arduino 1.0.3
+    //    by Arduino.cc user Krodal.
+    //    Changes by louarnold removed.
+    //    Scanning addresses changed from 0...127 to 1...119,
+    //    according to the i2c scanner by Nick Gammon
+    //    https://www.gammon.com.au/forum/?id=10896
+    // Version 5, March 28, 2013
+    //    As version 4, but address scans now to 127.
+    //    A sensor seems to use address 120.
+    // Version 6, November 27, 2015.
+    //    Added waiting for the Leonardo serial communication.
+    //
+    //
+    // This sketch tests the standard 7-bit addresses
+    // Devices with higher bit address might not be seen properly.
+    //
+     
+    #include <Wire.h>
+     
+     
+    void setup()
+    {
+      Wire.begin();
+     
+      Serial.begin(9600);
+      while (!Serial);             // Leonardo: wait for serial monitor
+      Serial.println("\nI2C Scanner");
     }
-    else{
-      Serial.println("ERROR!");
-      while(1);
+     
+     
+    void loop()
+    {
+      byte error, address;
+      int nDevices;
+     
+      Serial.println("Scanning...");
+     
+      nDevices = 0;
+      for(address = 1; address < 127; address++ )
+      {
+        // The i2c_scanner uses the return value of
+        // the Write.endTransmisstion to see if
+        // a device did acknowledge to the address.
+        Wire.beginTransmission(address);
+        error = Wire.endTransmission();
+     
+        if (error == 0)
+        {
+          Serial.print("I2C device found at address 0x");
+          if (address<16)
+            Serial.print("0");
+          Serial.print(address,HEX);
+          Serial.println("  !");
+     
+          nDevices++;
+        }
+        else if (error==4)
+        {
+          Serial.print("Unknown error at address 0x");
+          if (address<16)
+            Serial.print("0");
+          Serial.println(address,HEX);
+        }    
+      }
+      if (nDevices == 0)
+        Serial.println("No I2C devices found\n");
+      else
+        Serial.println("done\n");
+     
+      delay(5000);           // wait 5 seconds for next scan
     }
-  }
-  delay(5000);
-}
