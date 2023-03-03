@@ -11,18 +11,25 @@ void setup() {
   Serial.println("Adafruit MLX90614 Emissivity Setter.\n");
 
   // init sensor
-  if (!capteurTempCiel.begin()) //il faut re-init si on coupe l'alimentation au capteur (en premiere approche)
+  capteurTempCiel.begin(0x00)
   {
     Serial.println("Error connecting to MLX sensor. Check wiring.");
     while (1);
   };
+  Serial.println("Erase");
+  capteurTempCiel.write16(0x2E, 0); // erase
+  delay(10);
+
+  Serial.println("Write");
+  capteurTempCiel.write16(0x2E, 0x69);
+  delay(10);
+
+  Serial.println("Read");
+  Serial.println(capteurTempCiel.read16(0x2E));
+  while(1);
 }
 
 void loop() {
-  Serial.print("Temperature Objet:"); //celle à utiliser avec capteur pointé vers le ciel
-  Serial.println(capteurTempCiel.readObjectTempC());
-  Serial.print("Temperature Ambiente:");
-  Serial.println(capteurTempCiel.readAmbientTempC());
   delay(1000);
 
 }
