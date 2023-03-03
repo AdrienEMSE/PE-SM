@@ -130,13 +130,6 @@ void loop() {
 
   Serial.println("sending msg_ESP to esp");
   Serial6.write((uint8_t *)&aenvoyer,sizeof(msg_ESP));
-  // while (Serial6.available() == 0) {}     //wait for data available
-  // Serial6.readBytes((uint8_t*)&arecevoir,sizeof(msg_ESP));      // remove any \r \n whitespace at the end of the String
-  
-  // Serial.print("received struct with : val1 = ");
-  // Serial.print(arecevoir.val1);
-  // Serial.print(" val2 = ");
-  // Serial.println(arecevoir.val2);
 
 
   capteurUV.sleep(false); //pas besoin de réinitialiser
@@ -144,13 +137,11 @@ void loop() {
   Serial.println(capteurUV.readUV()); //pour interpréter: https://www.vishay.com/docs/84310/designingveml6070.pdf page 5
   capteurUV.sleep(true); //diminue la conso à 1 microA
 
-
   
 
   //attention fonctionnement de la librairie basé sur HAL_GetTick (parce que protocole de communication non conventionnel)
   //en particulier pour vérifier que 2s se sont écoulées depuis le dernier échantillonnage
   //donc prudence si on désactive les ticks si on passe en mode économie d'énergie le microcontrôleur
-
  
   // Get temperature event and print its value.
   sensors_event_t event;
@@ -196,9 +187,6 @@ void loop() {
   Serial.print(" rain % : ");
   Serial.println( rainPercent );
 
-
-  
-
   Serial.print("Pressure = ");
   Serial.print(bmp280.readPressure() / 100);
   Serial.println(" Pa, ");
@@ -212,8 +200,6 @@ void loop() {
 	Serial.print(hdc1080.readHumidity());
 	Serial.println("%");
 
-
-
   if(ccs.available()){
     if(!ccs.readData()){
       Serial.print("CO2: ");
@@ -226,10 +212,8 @@ void loop() {
       while(1);
     }
   }
-  
     
-    smartDelay(5000);
-  
+    smartDelay(1000);
     printDateTime(gps.date,gps.time);
     Serial.println();
 }
@@ -295,7 +279,6 @@ void printDateTime(TinyGPSDate &d, TinyGPSTime &t)
     Serial.print(sz);
   }
 
-  printInt(d.age(), d.isValid(), 5);
 
   smartDelay(0);
 }
