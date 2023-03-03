@@ -138,14 +138,7 @@ void loop() {
   // Serial.print(" val2 = ");
   // Serial.println(arecevoir.val2);
 
-  // printDateTime(gps.date, gps.time);
-  // Serial.println();
-  
-  // smartDelay(1000);
 
-  // if (millis() > 5000 && gps.charsProcessed() < 10)
-  //   Serial.println(F("No GPS data received: check wiring"));
-  
   capteurUV.sleep(false); //pas besoin de réinitialiser
   Serial.print("UV light level: "); 
   Serial.println(capteurUV.readUV()); //pour interpréter: https://www.vishay.com/docs/84310/designingveml6070.pdf page 5
@@ -234,8 +227,11 @@ void loop() {
     }
   }
   
-    delay(delayMS_DHT);
-    delay(3000);
+    
+    smartDelay(5000);
+  
+    printDateTime(gps.date,gps.time);
+    Serial.println();
 }
 
 
@@ -300,6 +296,7 @@ void printDateTime(TinyGPSDate &d, TinyGPSTime &t)
   }
 
   printInt(d.age(), d.isValid(), 5);
+
   smartDelay(0);
 }
 
