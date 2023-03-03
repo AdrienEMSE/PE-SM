@@ -65,7 +65,7 @@ static void printDateTime(TinyGPSDate &d, TinyGPSTime &t)
     Serial.print(sz);
   }
 
-  printInt(d.age(), d.isValid(), 5);
+
   smartDelay(0);
 }
 
@@ -87,7 +87,7 @@ void setup()
 
 void loop()
 {
- ;
+ 
 
 
   printDateTime(gps.date, gps.time);
