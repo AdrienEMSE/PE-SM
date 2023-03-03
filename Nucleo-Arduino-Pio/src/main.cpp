@@ -66,7 +66,7 @@ typedef struct _msg_ESP // Structure de message à envoyer à l'ESP
 }msg_ESP;
 
 msg_ESP aenvoyer;
-msg_ESP arecevoir;
+
 
 
 //Protoptypes fonctions utilitaires
@@ -78,13 +78,12 @@ void printStr(const char *str, int len);
 
 void setup() {
 
-  Serial.begin(9600);
-  Serial6.begin(115200);
-  aenvoyer.val1 = PI;
-  aenvoyer.val2 = 5;
-  Wire2.begin();
+  Serial.begin(9600); //Liaison serie vers Ordinateur
+  Serial6.begin(115200); // Liaison serie ESP
+  ss.begin(GPSBaud); // Liaison serie GPS
+  Wire2.begin(); // I2C Skytemp
 
-  while (!Serial);
+  while (!Serial); // Atente de l'ouverture de Serial
 
   Serial.println("VEML6070 Test");
   capteurUV.begin(VEML6070_1_T);
@@ -213,7 +212,7 @@ void loop() {
     }
   }
     
-    smartDelay(1000);
+    smartDelay(10000);
     printDateTime(gps.date,gps.time);
     Serial.println();
 }
