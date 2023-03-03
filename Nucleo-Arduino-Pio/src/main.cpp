@@ -23,8 +23,8 @@
 
 
 
-uint32_t pinPluvioAnalog = A0;
-uint32_t pinPluvioGPIO = D7;
+uint32_t pinPluvioAnalog = A4;
+uint32_t pinPluvioGPIO = D2;
 float seuil_haut = 815.0; // pas de pluie
 float seuil_bas = 425.0; // beaucoup de pluie
 
@@ -57,7 +57,7 @@ Adafruit_BMP280 bmp280; //Temperature et Pression                // I2C
 ClosedCube_HDC1080 hdc1080;// Temperature et Humidité
 
 HardwareSerial Serial6(D0,D1); // Liaison série vers ESP
-
+TwoWire Wire2(PB11,PB10);
 
 typedef struct _msg_ESP // Structure de message à envoyer à l'ESP
 {
@@ -82,6 +82,7 @@ void setup() {
   Serial6.begin(115200);
   aenvoyer.val1 = PI;
   aenvoyer.val2 = 5;
+  Wire2.begin();
 
   while (!Serial);
 
@@ -93,14 +94,14 @@ void setup() {
 
 
   Serial.println("Adafruit MLX90614 Emissivity Setter.\n");
-  if (!capteurTempCiel.begin()) //il faut re-init si on coupe l'alimentation au capteur (en premiere approche)
+  if (!capteurTempCiel.begin(0x69,&Wire2)) //il faut re-init si on coupe l'alimentation au capteur (en premiere approche)
   {
     Serial.println("Error connecting to MLX sensor. Check wiring.");
     while (1);
   }
 
   Serial.println("CCS811 test");      /* --- SETUP CCS811 on 0x5A ------ */
-  if(!ccs.begin()){
+  if(!ccs.begin(0x5B)){
     Serial.println("Failed to start sensor! Please check your wiring.");
     while(1);
   }
