@@ -86,9 +86,7 @@ msg_ESP aenvoyer;
 /*----------PROTOTYPES----------*/
 
 void smartDelay(unsigned long ms);
-void printInt(unsigned long val, bool valid, int len);
-void dateTimeToChar(TinyGPSDate &d, TinyGPSTime &t);
-void printStr(const char *str, int len);
+void dateTimePrint(TinyGPSDate &d, TinyGPSTime &t);
 void printCapteurs();
 
 /*----------CODE----------*/
@@ -211,8 +209,17 @@ void loop()
 
   smartDelay(10000);//DELAY + permet d'utiliser le GPS
 
-  dateTimeToChar(gps.date, gps.time); // conversion date,time -> char
+  aenvoyer.msg_gps.msg_location.lat = gps.location.lat();
+  aenvoyer.msg_gps.msg_location.lng = gps.location.lng();
+  aenvoyer.msg_gps.msg_date.a = gps.date.year();
+  aenvoyer.msg_gps.msg_date.j = gps.date.day();
+  aenvoyer.msg_gps.msg_date.m = gps.date.month();
+  aenvoyer.msg_gps.msg_time.hour = gps.time.hour();
+  aenvoyer.msg_gps.msg_time.min = gps.time.minute();
+  aenvoyer.msg_gps.msg_time.sec = gps.time.second();
   safePrintSerialln();
+  
+
   printCapteurs();
 
   safePrintSerialln("sending msg_ESP to esp...");
@@ -252,29 +259,30 @@ void printInt(unsigned long val, bool valid, int len)
   smartDelay(0);
 }
 
-void dateTimeToChar(TinyGPSDate &d, TinyGPSTime &t)
+void dateTimePrint(TinyGPSDate &d, TinyGPSTime &t)
 {
-  if (!d.isValid())
+  char toprint[50];
+  if(!d.isValid())
   {
 
-    sprintf(aenvoyer.date_gps, "********** ");
-    safePrintSerial(aenvoyer.date_gps);
+    sprintf(toprint, "********** ");
+    safePrintSerial(toprint);
   }
   else
   {
-    sprintf(aenvoyer.date_gps, "%02d/%02d/%02d ", d.month(), d.day(), d.year());
-    safePrintSerial(aenvoyer.date_gps);
+    sprintf(toprint, "%02d/%02d/%02d ", d.month(), d.day(), d.year());
+    safePrintSerial(toprint);
   }
 
   if (!t.isValid())
   {
-    sprintf(aenvoyer.time_gps, "********** ");
-    safePrintSerial(aenvoyer.time_gps);
+    sprintf(toprint, "********** ");
+    safePrintSerial(toprint);
   }
   else
   {
-    sprintf(aenvoyer.time_gps, "%02d:%02d:%02d ", t.hour(), t.minute(), t.second());
-    safePrintSerial(aenvoyer.time_gps);
+    sprintf(toprint, "%02d:%02d:%02d ", t.hour(), t.minute(), t.second());
+    safePrintSerial(toprint);
   }
 
   smartDelay(0);
@@ -290,6 +298,10 @@ void printStr(const char *str, int len)
 
 void printCapteurs()
 {
+  dateTimePrint(gps.date,gps.time);
+  safePrintSerial(gps.location.lat());
+  safePrintSerial(F(","));
+  safePrintSerialln(gps.location.lng());
   safePrintSerial("UV light level: ");
   safePrintSerialln(aenvoyer.uv_index_level);
   safePrintSerial(F("Temperature: "));
