@@ -53,6 +53,8 @@ static const uint32_t pinPluvioGPIO = D2;
 static const int RXPin = D4, TXPin = D7; // PIN Liaison série GPS
 static const int sleep_gpio_ccs_Pin = D5;
 static const int dht_pin = D3; // Digital pin connected to the DHT sensor
+static const int anemo_phase_1 = A1, anemo_phase_2 = A2;
+static const int capteur_de_foudre = A3;
 
 /*----------PARAMS----------*/
 
@@ -171,8 +173,8 @@ void loop()
   }
 
   capteurTempCiel.begin(0x69, &Wire2);
-  aenvoyer.skyTemp_object_celsius = capteurTempCiel.readObjectTempC();
-  aenvoyer.skyTemp_ambiant_celsius = capteurTempCiel.readAmbientTempC();
+  aenvoyer.temp_object_celsius_sky = capteurTempCiel.readObjectTempC();
+  aenvoyer.temp_ambiant_celsius_sky = capteurTempCiel.readAmbientTempC();
 
   uint32_t rain_read = analogRead(pinPluvioAnalog);
   int rain_GPIO = digitalRead(pinPluvioGPIO);
@@ -185,10 +187,10 @@ void loop()
   aenvoyer.pluie_gpio = rain_GPIO;
   aenvoyer.pluie_pourcentage = rainPercent;
 
-  aenvoyer.pression_bmp = bmp280.readPressure();
-  aenvoyer.temperature_bmp = bmp280.readTemperature();
+  aenvoyer.pression_Pa_bmp = bmp280.readPressure();
+  aenvoyer.temperature_celsius_bmp = bmp280.readTemperature();
 
-  aenvoyer.temperature_hdc = hdc1080.readTemperature();
+  aenvoyer.temperature_celsius_hdc = hdc1080.readTemperature();
   aenvoyer.humidite_relative_hdc = hdc1080.readHumidity();
 
   pinMode(sleep_gpio_ccs_Pin, LOW);
@@ -196,8 +198,8 @@ void loop()
   {
     if (!ccs.readData())
     {
-      aenvoyer.co2 = ccs.geteCO2();
-      aenvoyer.tvoc = ccs.getTVOC();
+      aenvoyer.co2_ppm = ccs.geteCO2();
+      aenvoyer.tvoc_index = ccs.getTVOC();
     }
     else
     {
@@ -297,26 +299,26 @@ void printCapteurs()
   safePrintSerial(aenvoyer.dht_humidite_relative);
   safePrintSerialln(F("%"));
   safePrintSerial("Temperature Objet:"); // celle à utiliser avec capteur pointé vers le ciel
-  safePrintSerialln(aenvoyer.skyTemp_object_celsius);
+  safePrintSerialln(aenvoyer.temp_object_celsius_sky);
   safePrintSerial("Temperature Ambiente:");
-  safePrintSerialln(aenvoyer.skyTemp_ambiant_celsius);
+  safePrintSerialln(aenvoyer.temp_ambiant_celsius_sky);
   safePrintSerial(" GPIO : ");
   safePrintSerial(!aenvoyer.pluie_gpio); // read GPIO at 1 when no rain, 0 when rain
   safePrintSerial(" rain % : ");
   safePrintSerialln(aenvoyer.pluie_pourcentage);
   safePrintSerial("Pressure = ");
-  safePrintSerial(aenvoyer.pression_bmp);
+  safePrintSerial(aenvoyer.pression_Pa_bmp);
   safePrintSerialln(" Pa, ");
   safePrintSerial("BMP280 => Temperature = ");
-  safePrintSerial(aenvoyer.temperature_bmp);
+  safePrintSerial(aenvoyer.temperature_celsius_bmp);
   safePrintSerial(" °C, ");
   safePrintSerial("T=");
-  safePrintSerial(aenvoyer.temperature_hdc);
+  safePrintSerial(aenvoyer.temperature_celsius_hdc);
   safePrintSerial("C, RH=");
   safePrintSerial(aenvoyer.humidite_relative_hdc);
   safePrintSerialln("%");
   safePrintSerial("CO2: ");
-  safePrintSerial(aenvoyer.co2);
+  safePrintSerial(aenvoyer.co2_ppm);
   safePrintSerial("ppm, TVOC: ");
-  safePrintSerialln(aenvoyer.tvoc);
+  safePrintSerialln(aenvoyer.tvoc_index);
 }
