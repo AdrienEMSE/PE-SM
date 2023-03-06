@@ -4,6 +4,22 @@
 
 #define           poly     0x1021          /* crc-ccitt mask */
 
+typedef struct _time
+{
+  uint8_t hour;
+  uint8_t min;
+  uint8_t sec;
+}time;
+
+typedef struct _date
+{
+  uint8_t m;
+  uint8_t j;
+  uint16_t a;
+}date;
+
+
+
 typedef struct _msg_ESP // Structure de message à envoyer à l'ESP
 {
   uint8_t uv_index_level;
