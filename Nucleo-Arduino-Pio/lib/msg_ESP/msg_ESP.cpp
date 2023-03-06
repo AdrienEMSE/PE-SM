@@ -1,11 +1,16 @@
 #include "msg_ESP.h"
 
+
 void updateCrc(msg_ESP * msg)
 {
+    void iteration_crc(unsigned short ch, unsigned short* crc);
+    void augment_message_crc(unsigned short* crc);
+    
     unsigned short crc = 0xffff;
-    for(int i = 0; i< sizeof(msg_ESP) -2; i ++)
+
+    for(unsigned short i = 0; i< sizeof(msg_ESP) -2; i ++)
     {
-        iteration_crc((unsigned short)msg+i,&crc);
+        iteration_crc(*((unsigned short * )(msg+i)),&crc);
     }
     augment_message_crc(&crc);
     msg->crc = crc;
@@ -14,15 +19,15 @@ void updateCrc(msg_ESP * msg)
 void iteration_crc(unsigned short ch, unsigned short* crc)
 {
     unsigned short i, v, xor_flag;
-
     /*
     Align test bit with leftmost bit of the message byte.
     */
     v = 0x80;
+    unsigned short good_crc = *crc;
 
     for (i=0; i<8; i++)
     {
-        if (*crc & 0x8000)
+        if (good_crc & 0x8000)
         {
             xor_flag= 1;
         }
@@ -30,7 +35,7 @@ void iteration_crc(unsigned short ch, unsigned short* crc)
         {
             xor_flag= 0;
         }
-        *crc = *crc << 1;
+        good_crc = good_crc << 1;
 
         if (ch & v)
         {
@@ -39,12 +44,12 @@ void iteration_crc(unsigned short ch, unsigned short* crc)
             The zero bit placed there by the shift above need not be
             changed if the next bit of the message is zero.
             */
-            *crc= *crc + 1;
+            good_crc= good_crc + 1;
         }
 
         if (xor_flag)
         {
-            *crc = *crc ^ poly;
+            good_crc = good_crc ^ poly;
         }
 
         /*
@@ -52,15 +57,17 @@ void iteration_crc(unsigned short ch, unsigned short* crc)
         */
         v = v >> 1;
     }
+    *crc = good_crc;
 } 
 
 void augment_message_crc(unsigned short* crc)
 {
-    unsigned short i, xor_flag;
+     unsigned short i, xor_flag;
+     unsigned short good_crc = *crc;
 
     for (i=0; i<16; i++)
     {
-        if (*crc & 0x8000)
+        if (good_crc & 0x8000)
         {
             xor_flag= 1;
         }
@@ -68,11 +75,12 @@ void augment_message_crc(unsigned short* crc)
         {
             xor_flag= 0;
         }
-        *crc = *crc << 1;
+        good_crc = good_crc << 1;
 
         if (xor_flag)
         {
-            *crc = *crc ^ poly;
+            good_crc = good_crc ^ poly;
         }
     }
+    *crc = good_crc;
 } 

@@ -89,7 +89,7 @@ void smartDelay(unsigned long ms);
 void printInt(unsigned long val, bool valid, int len);
 void dateTimeToChar(TinyGPSDate &d, TinyGPSTime &t);
 void printStr(const char *str, int len);
-
+void printCapteurs();
 
 /*----------CODE----------*/
 

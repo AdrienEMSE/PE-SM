@@ -27,3 +27,4 @@ typedef struct _msg_ESP // Structure de message à envoyer à l'ESP
 
 void updateCrc(msg_ESP * msg);
 void iteration_crc(unsigned short ch);
+void iteration_crc(unsigned short ch, unsigned short* crc);
