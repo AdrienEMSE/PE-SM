@@ -1,3 +1,6 @@
+/*----------INCLUDES----------*/
+
+
 #include <Arduino.h>
 
 #include <Wire.h>
@@ -13,238 +16,220 @@
 #include <DHT.h> // LIB Température Humidité
 #include <DHT_U.h>
 
-
 #include <Adafruit_MLX90614.h>
-#include <Adafruit_CCS811.h>            // include library for CCS811 - Sensor from martin-pennings https://github.com/maarten-pennings/CCS811
-#include <Adafruit_BMP280.h>            // include main library for BMP280 - Sensor
+#include <Adafruit_CCS811.h> // include library for CCS811 - Sensor from martin-pennings https://github.com/maarten-pennings/CCS811
+#include <Adafruit_BMP280.h> // include main library for BMP280 - Sensor
 
 #include "ClosedCube_HDC1080.h"
 
+#include "msg_ESP.h"
 
+/*----------MACRO----------*/
 
+#define DEBUG
 
-uint32_t pinPluvioAnalog = A4;
-uint32_t pinPluvioGPIO = D2;
-float seuil_haut = 815.0; // pas de pluie
-float seuil_bas = 425.0; // beaucoup de pluie
+#ifdef DEBUG
 
-static const int RXPin = 4, TXPin = 7; // PIN Liaison série GPS
-static const uint32_t GPSBaud = 9600;  // BAUD GPS
+#define safePrintSerial(x) Serial.print(x)
+#define safePrintSerialln(x) Serial.println(x)
 
-static const int sleep_gpio_ccs_Pin = D5;
+#else
 
+#define safePrintSerial(x)
+#define safePrintSerialln(x)
 
-TinyGPSPlus gps; // GPS
-SoftwareSerial ss(RXPin, TXPin); // Liaison série vers GPS
-
-
-#define DHTPIN 3     // Digital pin connected to the DHT sensor 
+#endif
 
 // Uncomment the type of sensor in use:
-//#define DHTTYPE    DHT11     // DHT 11
-#define DHTTYPE    DHT22     // DHT 22 (AM2302)
-//#define DHTTYPE    DHT21     // DHT 21 (AM2301)
+// #define DHTTYPE    DHT11     // DHT 11
+#define DHTTYPE DHT22 // DHT 22 (AM2302)
+// #define DHTTYPE    DHT21     // DHT 21 (AM2301)
 
-DHT_Unified capteurTempHum(DHTPIN, DHTTYPE);
-
-uint32_t delayMS_DHT = 2000;  // Delay pour le DHT
+/*----------PINS----------*/
 
 
-Adafruit_VEML6070 capteurUV = Adafruit_VEML6070(); //une résistance de RSET=270kOhms est soudée sur le capteur
-Adafruit_MLX90614 capteurTempCiel = Adafruit_MLX90614(); //par défaut addr=0x5A
+static const uint32_t pinPluvioAnalog = A4;
+static const uint32_t pinPluvioGPIO = D2;
+static const int RXPin = D4, TXPin = D7; // PIN Liaison série GPS
+static const int sleep_gpio_ccs_Pin = D5;
+static const int dht_pin = D3; // Digital pin connected to the DHT sensor
 
-//Capteur qualité de l'air :
-Adafruit_CCS811 ccs; // CO2, TOV,
-Adafruit_BMP280 bmp280; //Temperature et Pression                // I2C
-ClosedCube_HDC1080 hdc1080;// Temperature et Humidité
+/*----------PARAMS----------*/
 
-HardwareSerial Serial6(D0,D1); // Liaison série vers ESP
-TwoWire Wire2(PB11,PB10);
+float seuil_haut = 815.0; // pas de pluie
+float seuil_bas = 425.0;  // beaucoup de pluie
 
-typedef struct _msg_ESP // Structure de message à envoyer à l'ESP
-{
-  float_t val1;
-  uint32_t val2;
-}msg_ESP;
+static const uint32_t GPSBaud = 9600;    // BAUD GPS
 
+/*----------STRUCT ET CLASSES----------*/
+
+TinyGPSPlus gps;                 // GPS
+SoftwareSerial ss(RXPin, TXPin); // Liaison série vers GPS
+
+DHT_Unified capteurTempHum(dht_pin, DHTTYPE);
+
+
+Adafruit_VEML6070 capteurUV = Adafruit_VEML6070();       // une résistance de RSET=270kOhms est soudée sur le capteur
+Adafruit_MLX90614 capteurTempCiel = Adafruit_MLX90614(); // par défaut addr=0x5A
+
+// Capteur qualité de l'air :
+Adafruit_CCS811 ccs;        // CO2, TOV,
+Adafruit_BMP280 bmp280;     // Temperature et Pression                // I2C
+ClosedCube_HDC1080 hdc1080; // Temperature et Humidité
+
+HardwareSerial Serial6(D0, D1); // Liaison série vers ESP
+TwoWire Wire2(PB11, PB10);
 msg_ESP aenvoyer;
 
+/*----------PROTOTYPES----------*/
 
-
-//Protoptypes fonctions utilitaires
-void printSerialNumber();
 void smartDelay(unsigned long ms);
 void printInt(unsigned long val, bool valid, int len);
-void printDateTime(TinyGPSDate &d, TinyGPSTime &t);
+void dateTimeToChar(TinyGPSDate &d, TinyGPSTime &t);
 void printStr(const char *str, int len);
 
-void setup() {
 
-  Serial.begin(9600); //Liaison serie vers Ordinateur
+/*----------CODE----------*/
+
+void setup()
+{
+
+  Serial.begin(9600);    // Liaison serie vers Ordinateur
   Serial6.begin(115200); // Liaison serie ESP
-  ss.begin(GPSBaud); // Liaison serie GPS
-  Wire2.begin(); // I2C Skytemp
-
+  ss.begin(GPSBaud);     // Liaison serie GPS
+  Wire2.begin();         // I2C Skytemp
 
   while (!Serial); // Atente de l'ouverture de Serial
 
-  Serial.println("VEML6070 Test");
+  safePrintSerialln("VEML6070 Test");
   capteurUV.begin(VEML6070_1_T);
-   Serial.println(F("DHTxx Unified Sensor Example"));
+  safePrintSerialln(F("DHTxx Unified Sensor Example"));
   capteurTempHum.begin();
 
-
-
-  Serial.println("Adafruit MLX90614 Emissivity Setter.\n");
-  if (!capteurTempCiel.begin(0x69,&Wire2)) //il faut re-init si on coupe l'alimentation au capteur (en premiere approche)
+  safePrintSerialln("Adafruit MLX90614 Emissivity Setter.\n");
+  if (!capteurTempCiel.begin(0x69, &Wire2)) // il faut re-init si on coupe l'alimentation au capteur (en premiere approche)
   {
-    Serial.println("Error connecting to MLX sensor. Check wiring.");
+    safePrintSerialln("Error connecting to MLX sensor. Check wiring.");
     while (1);
   }
 
-  Serial.println("CCS811 test");      /* --- SETUP CCS811 on 0x5A ------ */
-  if(!ccs.begin(0x5B)){
-    Serial.println("Failed to start sensor! Please check your wiring.");
-    while(1);
+  safePrintSerialln("CCS811 test"); /* --- SETUP CCS811 on 0x5A ------ */
+  if (!ccs.begin(0x5B))
+  {
+    safePrintSerialln("Failed to start sensor! Please check your wiring.");
+    while (1);
   }
-  while(!ccs.available());
+  while (!ccs.available());
   ccs.setDriveMode(CCS811_DRIVE_MODE_60SEC);
-  pinMode(sleep_gpio_ccs_Pin,HIGH);
+  pinMode(sleep_gpio_ccs_Pin, HIGH);
 
-
-  Serial.println("BMP280 test");     /* --- SETUP BMP on 0x76 ------ */
-  if (!bmp280.begin(0x76)) {
-    Serial.println("Could not find a valid BMP280 sensor, check wiring!");
+  safePrintSerialln("BMP280 test"); /* --- SETUP BMP on 0x76 ------ */
+  if (!bmp280.begin(0x76))
+  {
+    safePrintSerialln("Could not find a valid BMP280 sensor, check wiring!");
     while (true);
   }
 
-	Serial.println("ClosedCube HDC1080 Arduino Test");
-	hdc1080.begin(0x40);
+  safePrintSerialln("ClosedCube HDC1080 Arduino Test");
+  hdc1080.begin(0x40);
 
-  pinMode(pinPluvioAnalog,INPUT_ANALOG);
-  pinMode(pinPluvioGPIO,INPUT_PULLDOWN);
-
-  
+  pinMode(pinPluvioAnalog, INPUT_ANALOG);
+  pinMode(pinPluvioGPIO, INPUT_PULLDOWN);
 }
 
+void loop()
+{
 
-void loop() {
+  capteurUV.sleep(false);                       // pas besoin de réinitialiser
+  aenvoyer.uv_index_level = capteurUV.readUV(); // pour interpréter: https://www.vishay.com/docs/84310/designingveml6070.pdf page 5
+  capteurUV.sleep(true);                        // diminue la conso à 1 microA
 
-  aenvoyer.val2++;
+  // attention fonctionnement de la librairie basé sur HAL_GetTick (parce que protocole de communication non conventionnel)
+  // en particulier pour vérifier que 2s se sont écoulées depuis le dernier échantillonnage
+  // donc prudence si on désactive les ticks si on passe en mode économie d'énergie le microcontrôleur
 
-  Serial.println("sending msg_ESP to esp");
-  Serial6.write((uint8_t *)&aenvoyer,sizeof(msg_ESP));
-
-
-  capteurUV.sleep(false); //pas besoin de réinitialiser
-  Serial.print("UV light level: "); 
-  Serial.println(capteurUV.readUV()); //pour interpréter: https://www.vishay.com/docs/84310/designingveml6070.pdf page 5
-  capteurUV.sleep(true); //diminue la conso à 1 microA
-
-  
-
-  //attention fonctionnement de la librairie basé sur HAL_GetTick (parce que protocole de communication non conventionnel)
-  //en particulier pour vérifier que 2s se sont écoulées depuis le dernier échantillonnage
-  //donc prudence si on désactive les ticks si on passe en mode économie d'énergie le microcontrôleur
- 
   // Get temperature event and print its value.
   sensors_event_t event;
   capteurTempHum.temperature().getEvent(&event);
-  if (isnan(event.temperature)) {
-    Serial.println(F("Error reading temperature!"));
+  if (isnan(event.temperature))
+  {
+    safePrintSerialln(F("Error reading temperature DHT!"));
   }
-  else {
-    Serial.print(F("Temperature: "));
-    Serial.print(event.temperature);
-    Serial.println(F("°C"));
+  else
+  {
+    aenvoyer.dht_temp_celsius = event.temperature;
   }
   // Get humidity event and print its value.
   capteurTempHum.humidity().getEvent(&event);
-  if (isnan(event.relative_humidity)) {
-    Serial.println(F("Error reading humidity!"));
+  if (isnan(event.relative_humidity))
+  {
+    safePrintSerialln(F("Error reading humidity DHT!"));
   }
-  else {
-    Serial.print(F("Humidity: "));
-    Serial.print(event.relative_humidity);
-    Serial.println(F("%"));
+  else
+  {
+    aenvoyer.dht_humidite_relative = event.relative_humidity;
   }
 
-
-  capteurTempCiel.begin(0x69,&Wire2);
-  Serial.print("Temperature Objet:"); //celle à utiliser avec capteur pointé vers le ciel
-  Serial.println(capteurTempCiel.readObjectTempC());
-  Serial.print("Temperature Ambiente:");
-  Serial.println(capteurTempCiel.readAmbientTempC());
-  
+  capteurTempCiel.begin(0x69, &Wire2);
+  aenvoyer.skyTemp_object_celsius = capteurTempCiel.readObjectTempC();
+  aenvoyer.skyTemp_ambiant_celsius = capteurTempCiel.readAmbientTempC();
 
   uint32_t rain_read = analogRead(pinPluvioAnalog);
   int rain_GPIO = digitalRead(pinPluvioGPIO);
-  float rainPercent = (seuil_haut/(seuil_haut-seuil_bas)) -((float)rain_read)/(seuil_haut-seuil_bas);
-  if(rainPercent > 1.0)
+  float rainPercent = (seuil_haut / (seuil_haut - seuil_bas)) - ((float)rain_read) / (seuil_haut - seuil_bas);
+  if (rainPercent > 1.0)
     rainPercent = 1.0;
   else if (rainPercent < 0.0)
     rainPercent = 0.0;
-  Serial.print("rain_raw :");
-  Serial.print(rain_read);
-  Serial.print(" GPIO : ");
-  Serial.print(!rain_GPIO); // read GPIO at 1 when no rain, 0 when rain
-  Serial.print(" rain % : ");
-  Serial.println( rainPercent );
 
+  aenvoyer.pluie_gpio = rain_GPIO;
+  aenvoyer.pluie_pourcentage = rainPercent;
 
+  aenvoyer.pression_bmp = bmp280.readPressure();
+  aenvoyer.temperature_bmp = bmp280.readTemperature();
 
-  Serial.print("Pressure = ");
-  Serial.print(bmp280.readPressure() / 100);
-  Serial.println(" Pa, ");
-  Serial.print("BMP280 => Temperature = ");
-  Serial.print(bmp280.readTemperature());
-  Serial.print(" °C, ");
+  aenvoyer.temperature_hdc = hdc1080.readTemperature();
+  aenvoyer.humidite_relative_hdc = hdc1080.readHumidity();
 
-	Serial.print("T=");
-	Serial.print(hdc1080.readTemperature());
-	Serial.print("C, RH=");
-	Serial.print(hdc1080.readHumidity());
-	Serial.println("%");
-
-  pinMode(sleep_gpio_ccs_Pin,LOW);
-  if(ccs.available()){
-    if(!ccs.readData()){
-      Serial.print("CO2: ");
-      Serial.print(ccs.geteCO2());
-      Serial.print("ppm, TVOC: ");
-      Serial.println(ccs.getTVOC());
+  pinMode(sleep_gpio_ccs_Pin, LOW);
+  if (ccs.available())
+  {
+    if (!ccs.readData())
+    {
+      aenvoyer.co2 = ccs.geteCO2();
+      aenvoyer.tvoc = ccs.getTVOC();
     }
-    else{
-      Serial.println("ERROR!");
-      while(1);
+    else
+    {
+      safePrintSerialln("ERROR air quality CCS!");
+      while (1);
     }
   }
-  pinMode(sleep_gpio_ccs_Pin,HIGH);
-    
-  smartDelay(10000);
-  printDateTime(gps.date,gps.time);
-  Serial.println();
+  pinMode(sleep_gpio_ccs_Pin, HIGH);
 
-  delay(50000);
-  }
+  smartDelay(10000);//DELAY + permet d'utiliser le GPS
 
+  dateTimeToChar(gps.date, gps.time); // conversion date,time -> char
+  safePrintSerialln();
+  printCapteurs();
+
+  safePrintSerialln("sending msg_ESP to esp...");
+  Serial6.write((uint8_t *)&aenvoyer, sizeof(msg_ESP));
+  safePrintSerialln("...msg_sent");
+
+  delay(40000);
+}
 
 /*---------------------Fonctions utilitaires----------------------*/
 
-void printSerialNumber() {
-	Serial.print("Device Serial Number=");
-	HDC1080_SerialNumber sernum = hdc1080.readSerialNumber();
-	char format[12];
-	sprintf(format, "%02X-%04X-%04X", sernum.serialFirst, sernum.serialMid, sernum.serialLast);
-	Serial.println(format);
-}
+
 
 // This custom version of delay() ensures that the gps object
 // is being "fed".
 void smartDelay(unsigned long ms)
 {
   unsigned long start = millis();
-  do 
+  do
   {
     while (ss.available())
       gps.encode(ss.read());
@@ -257,47 +242,81 @@ void printInt(unsigned long val, bool valid, int len)
   if (valid)
     sprintf(sz, "%ld", val);
   sz[len] = 0;
-  for (int i=strlen(sz); i<len; ++i)
+  for (int i = strlen(sz); i < len; ++i)
     sz[i] = ' ';
-  if (len > 0) 
-    sz[len-1] = ' ';
-  Serial.print(sz);
+  if (len > 0)
+    sz[len - 1] = ' ';
+  safePrintSerial(sz);
   smartDelay(0);
 }
 
-void printDateTime(TinyGPSDate &d, TinyGPSTime &t)
+void dateTimeToChar(TinyGPSDate &d, TinyGPSTime &t)
 {
   if (!d.isValid())
   {
-    Serial.print(F("********** "));
+
+    sprintf(aenvoyer.date_gps, "********** ");
+    safePrintSerial(aenvoyer.date_gps);
   }
   else
   {
-    char sz[32];
-    sprintf(sz, "%02d/%02d/%02d ", d.month(), d.day(), d.year());
-    Serial.print(sz);
+    sprintf(aenvoyer.date_gps, "%02d/%02d/%02d ", d.month(), d.day(), d.year());
+    safePrintSerial(aenvoyer.date_gps);
   }
 
   if (!t.isValid())
   {
-    Serial.print(F("******** "));
+    sprintf(aenvoyer.time_gps, "********** ");
+    safePrintSerial(aenvoyer.time_gps);
   }
   else
   {
-    char sz[32];
-    sprintf(sz, "%02d:%02d:%02d ", t.hour(), t.minute(), t.second());
-    Serial.print(sz);
+    sprintf(aenvoyer.time_gps, "%02d:%02d:%02d ", t.hour(), t.minute(), t.second());
+    safePrintSerial(aenvoyer.time_gps);
   }
-
 
   smartDelay(0);
 }
 
-
 void printStr(const char *str, int len)
 {
   int slen = strlen(str);
-  for (int i=0; i<len; ++i)
-    Serial.print(i<slen ? str[i] : ' ');
+  for (int i = 0; i < len; ++i)
+    safePrintSerial(i < slen ? str[i] : ' ');
   smartDelay(0);
+}
+
+void printCapteurs()
+{
+  safePrintSerial("UV light level: ");
+  safePrintSerialln(aenvoyer.uv_index_level);
+  safePrintSerial(F("Temperature: "));
+  safePrintSerial(aenvoyer.dht_temp_celsius);
+  safePrintSerialln(F("°C"));
+  safePrintSerial(F("Humidity: "));
+  safePrintSerial(aenvoyer.dht_humidite_relative);
+  safePrintSerialln(F("%"));
+  safePrintSerial("Temperature Objet:"); // celle à utiliser avec capteur pointé vers le ciel
+  safePrintSerialln(aenvoyer.skyTemp_object_celsius);
+  safePrintSerial("Temperature Ambiente:");
+  safePrintSerialln(aenvoyer.skyTemp_ambiant_celsius);
+  safePrintSerial(" GPIO : ");
+  safePrintSerial(!aenvoyer.pluie_gpio); // read GPIO at 1 when no rain, 0 when rain
+  safePrintSerial(" rain % : ");
+  safePrintSerialln(aenvoyer.pluie_pourcentage);
+  safePrintSerial("Pressure = ");
+  safePrintSerial(aenvoyer.pression_bmp);
+  safePrintSerialln(" Pa, ");
+  safePrintSerial("BMP280 => Temperature = ");
+  safePrintSerial(aenvoyer.temperature_bmp);
+  safePrintSerial(" °C, ");
+  safePrintSerial("T=");
+  safePrintSerial(aenvoyer.temperature_hdc);
+  safePrintSerial("C, RH=");
+  safePrintSerial(aenvoyer.humidite_relative_hdc);
+  safePrintSerialln("%");
+  safePrintSerial("CO2: ");
+  safePrintSerial(aenvoyer.co2);
+  safePrintSerial("ppm, TVOC: ");
+  safePrintSerialln(aenvoyer.tvoc);
 }
