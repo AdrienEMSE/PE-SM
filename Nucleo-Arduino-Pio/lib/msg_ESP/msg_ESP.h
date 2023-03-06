@@ -2,6 +2,9 @@
 
 #include <Arduino.h>
 
+//message struct avec verification d'integrité des données grâce au CCR16-CCITT;
+//info @ https://srecord.sourceforge.net/crc16-ccitt.html
+
 #define           poly     0x1021          /* crc-ccitt mask */
 
 typedef struct _time
@@ -52,8 +55,11 @@ typedef struct _msg_ESP // Structure de message à envoyer à l'ESP
   uint8_t uv_index_level; //1
   uint16_t crc; // 2
 
-} msg_ESP;
+} msg_ESP; // le sizeof de msg_ESP correspond à la somme des sizeof de ce qui compose la struct
+// la verification ne marche pas si la somme de ce qui est ajouté n'est pas un multiple de 8 octets 
+// Actuellement : 88 octets, si il faut l'étendre, il faut aller jusqu'à 96 octets quitte à sur dimensionner les types
+// crc doit être à la fin de la struct 
 
-void updateCrc(msg_ESP * msg);
-void iteration_crc(unsigned short ch);
+void updateCrc(msg_ESP * msg); // permet de calculer le crc
+void augment_message_crc(unsigned short* crc);
 void iteration_crc(unsigned short ch, unsigned short* crc);
