@@ -60,6 +60,20 @@ typedef struct _msg_ESP // Structure de message à envoyer à l'ESP
 // Actuellement : 88 octets, si il faut l'étendre, il faut aller jusqu'à 96 octets quitte à sur dimensionner les types
 // crc doit être à la fin de la struct 
 
-void updateCrc(msg_ESP * msg); // permet de calculer le crc
-void augment_message_crc(unsigned short* crc);
-void iteration_crc(unsigned short ch, unsigned short* crc);
+class msg_ESP_class
+{
+private:
+  void augment_message_crc(unsigned short* crc);
+  void iteration_crc(unsigned short ch, unsigned short* crc);
+  HardwareSerial* Serial_ESP;
+public:
+  msg_ESP _msg;
+  msg_ESP_class(HardwareSerial* Serial_comm);
+  ~msg_ESP_class();
+  uint16_t updateCrc(); // permet de calculer le crc
+  bool iscrcOk();
+};
+
+
+
+

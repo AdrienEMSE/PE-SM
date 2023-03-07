@@ -81,7 +81,7 @@ ClosedCube_HDC1080 hdc1080; // Temperature et Humidité
 
 HardwareSerial Serial6(D0, D1); // Liaison série vers ESP
 TwoWire Wire2(PB11, PB10);
-msg_ESP aenvoyer;
+msg_ESP_class aenvoyer;
 
 /*----------PROTOTYPES----------*/
 
@@ -95,41 +95,41 @@ void setup()
 {
 
   Serial.begin(9600);    // Liaison serie vers Ordinateur
-  aenvoyer.uv_index_level = 1;
-  aenvoyer.tvoc_index = 1;
-  aenvoyer.temperature_celsius_hdc = 30.0;
-  aenvoyer.temperature_celsius_bmp = 30.0;
-  aenvoyer.temp_object_celsius_sky = 20.0;
-  aenvoyer.temp_ambiant_celsius_sky = 25.0;
-  aenvoyer.pression_Pa_bmp = 5.0;
-  aenvoyer.pluie_pourcentage = 0.3;
-  aenvoyer.pluie_gpio = 1;
-  aenvoyer.humidite_relative_hdc = 0.4;
-  aenvoyer.dht_temp_celsius = 30.0;
-  aenvoyer.dht_humidite_relative = 0.5;
-  aenvoyer.co2_ppm = 30;
-  aenvoyer.msg_gps.msg_date.a = 2033;
-  aenvoyer.msg_gps.msg_date.j = 7;
-  aenvoyer.msg_gps.msg_date.m = 4;
-  aenvoyer.msg_gps.msg_location.lat = 30.0;
-  aenvoyer.msg_gps.msg_location.lng = 40.0;
-  aenvoyer.msg_gps.msg_time.hour = 10;
-  aenvoyer.msg_gps.msg_time.min = 50;
-  aenvoyer.msg_gps.msg_time.sec = 35;
-  aenvoyer.crc = 0xffff;
+  aenvoyer._msg.uv_index_level = 1;
+  aenvoyer._msg.tvoc_index = 1;
+  aenvoyer._msg.temperature_celsius_hdc = 30.0;
+  aenvoyer._msg.temperature_celsius_bmp = 30.0;
+  aenvoyer._msg.temp_object_celsius_sky = 20.0;
+  aenvoyer._msg.temp_ambiant_celsius_sky = 25.0;
+  aenvoyer._msg.pression_Pa_bmp = 5.0;
+  aenvoyer._msg.pluie_pourcentage = 0.3;
+  aenvoyer._msg.pluie_gpio = 1;
+  aenvoyer._msg.humidite_relative_hdc = 0.4;
+  aenvoyer._msg.dht_temp_celsius = 30.0;
+  aenvoyer._msg.dht_humidite_relative = 0.5;
+  aenvoyer._msg.co2_ppm = 30;
+  aenvoyer._msg.msg_gps.msg_date.a = 2033;
+  aenvoyer._msg.msg_gps.msg_date.j = 7;
+  aenvoyer._msg.msg_gps.msg_date.m = 4;
+  aenvoyer._msg.msg_gps.msg_location.lat = 30.0;
+  aenvoyer._msg.msg_gps.msg_location.lng = 40.0;
+  aenvoyer._msg.msg_gps.msg_time.hour = 10;
+  aenvoyer._msg.msg_gps.msg_time.min = 50;
+  aenvoyer._msg.msg_gps.msg_time.sec = 35;
+  aenvoyer._msg.crc = 0xffff;
   uint32_t timer = micros();
-  updateCrc(&aenvoyer);
+  aenvoyer.updateCrc();
   Serial.print("time ellapsed :");
   Serial.println(micros()-timer);
   Serial.print("CRC :");
-  Serial.println(aenvoyer.crc,HEX);
-  updateCrc(&aenvoyer);
+  Serial.println(aenvoyer._msg.crc,HEX);
+  aenvoyer.updateCrc();
   Serial.print("CRC 2 :");
-  Serial.println(aenvoyer.crc,HEX);
-  aenvoyer.tvoc_index =4;
-  updateCrc(&aenvoyer);
+  Serial.println(aenvoyer._msg.crc,HEX);
+  aenvoyer._msg.tvoc_index =4;
+  aenvoyer.updateCrc();
   Serial.print("CRC 2 :");
-  Serial.println(aenvoyer.crc,HEX);
+  Serial.println(aenvoyer._msg.crc,HEX);
 
 }
 
@@ -208,41 +208,3 @@ void printStr(const char *str, int len)
   smartDelay(0);
 }
 
-void printCapteurs()
-{
-  dateTimePrint(gps.date,gps.time);
-  safePrintSerial(gps.location.lat());
-  safePrintSerial(F(","));
-  safePrintSerialln(gps.location.lng());
-  safePrintSerial("UV light level: ");
-  safePrintSerialln(aenvoyer.uv_index_level);
-  safePrintSerial(F("Temperature: "));
-  safePrintSerial(aenvoyer.dht_temp_celsius);
-  safePrintSerialln(F("°C"));
-  safePrintSerial(F("Humidity: "));
-  safePrintSerial(aenvoyer.dht_humidite_relative);
-  safePrintSerialln(F("%"));
-  safePrintSerial("Temperature Objet:"); // celle à utiliser avec capteur pointé vers le ciel
-  safePrintSerialln(aenvoyer.temp_object_celsius_sky);
-  safePrintSerial("Temperature Ambiente:");
-  safePrintSerialln(aenvoyer.temp_ambiant_celsius_sky);
-  safePrintSerial(" GPIO : ");
-  safePrintSerial(!aenvoyer.pluie_gpio); // read GPIO at 1 when no rain, 0 when rain
-  safePrintSerial(" rain % : ");
-  safePrintSerialln(aenvoyer.pluie_pourcentage);
-  safePrintSerial("Pressure = ");
-  safePrintSerial(aenvoyer.pression_Pa_bmp);
-  safePrintSerialln(" Pa, ");
-  safePrintSerial("BMP280 => Temperature = ");
-  safePrintSerial(aenvoyer.temperature_celsius_bmp);
-  safePrintSerial(" °C, ");
-  safePrintSerial("T=");
-  safePrintSerial(aenvoyer.temperature_celsius_hdc);
-  safePrintSerial("C, RH=");
-  safePrintSerial(aenvoyer.humidite_relative_hdc);
-  safePrintSerialln("%");
-  safePrintSerial("CO2: ");
-  safePrintSerial(aenvoyer.co2_ppm);
-  safePrintSerial("ppm, TVOC: ");
-  safePrintSerialln(aenvoyer.tvoc_index);
-}

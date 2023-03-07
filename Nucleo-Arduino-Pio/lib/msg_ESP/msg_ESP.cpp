@@ -1,10 +1,18 @@
 #include "msg_ESP.h"
 
-
-void updateCrc(msg_ESP * msg)
+msg_ESP_class::msg_ESP_class(HardwareSerial* Serial_comm) : Serial_ESP(Serial_comm)
 {
-    void iteration_crc(unsigned short ch, unsigned short* crc);
-    void augment_message_crc(unsigned short* crc);
+    
+}
+
+msg_ESP_class::~msg_ESP_class()
+{
+}
+
+
+uint16_t msg_ESP_class::updateCrc()
+{
+    msg_ESP* msg = &_msg;
     
     unsigned short crc = 0xffff;
 
@@ -14,11 +22,13 @@ void updateCrc(msg_ESP * msg)
     }
     augment_message_crc(&crc);
     msg->crc = crc;
+    return crc;
 }
 
-void iteration_crc(unsigned short ch, unsigned short* crc)
+void msg_ESP_class::iteration_crc(unsigned short ch, unsigned short* crc)
 {
     unsigned short i, v, xor_flag;
+    
     /*
     Align test bit with leftmost bit of the message byte.
     */
@@ -60,7 +70,7 @@ void iteration_crc(unsigned short ch, unsigned short* crc)
     *crc = good_crc;
 } 
 
-void augment_message_crc(unsigned short* crc)
+void msg_ESP_class::augment_message_crc(unsigned short* crc)
 {
      unsigned short i, xor_flag;
      unsigned short good_crc = *crc;
@@ -84,3 +94,19 @@ void augment_message_crc(unsigned short* crc)
     }
     *crc = good_crc;
 } 
+
+bool msg_ESP_class::iscrcOk()
+{
+    msg_ESP* msg = &_msg;
+    uint16_t crcToCheck = msg->crc;
+    updateCrc();
+    if(msg->crc == crcToCheck)
+    {
+        return true;
+    }
+    else
+    {
+        msg->crc = crcToCheck;
+        return false;
+    }
+}
