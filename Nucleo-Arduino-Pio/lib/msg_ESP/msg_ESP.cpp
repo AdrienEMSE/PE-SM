@@ -10,7 +10,7 @@ void updateCrc(msg_ESP * msg)
 
     for(unsigned short i = 0; i< sizeof(msg_ESP) -2; i ++)
     {
-        iteration_crc(*((unsigned short * )(msg+i)),&crc);
+        iteration_crc(*((unsigned char * )msg+i),&crc);
     }
     augment_message_crc(&crc);
     msg->crc = crc;

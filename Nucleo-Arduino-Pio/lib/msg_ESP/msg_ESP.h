@@ -16,9 +16,9 @@ typedef struct _time
 
 typedef struct _date
 {
-  uint16_t m;
+  uint16_t a;
+  uint8_t m;
   uint8_t j;
-  uint8_t a;
 }date_msg;
 
 typedef struct _location_msg
