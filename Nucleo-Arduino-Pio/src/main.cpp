@@ -24,6 +24,7 @@
 
 #include "msg_ESP.h"
 
+
 /*----------MACRO----------*/
 
 // #define DEBUG
@@ -45,6 +46,8 @@
 #define DHTTYPE DHT22 // DHT 22 (AM2302)
 // #define DHTTYPE    DHT21     // DHT 21 (AM2301)
 
+#define TIMEOUT_MS 5000 //timeout pour la communication liaison série ESP
+
 /*----------PINS----------*/
 
 
@@ -62,6 +65,11 @@ float seuil_haut = 815.0; // pas de pluie
 float seuil_bas = 425.0;  // beaucoup de pluie
 
 static const uint32_t GPSBaud = 9600;    // BAUD GPS
+
+/*----------VAR----------*/
+
+  String receive_string;
+  String send_string;
 
 /*----------STRUCT ET CLASSES----------*/
 
@@ -85,6 +93,7 @@ msg_ESP_class aenvoyer(&Serial6);
 
 /*----------PROTOTYPES----------*/
 
+bool safeSendX1();
 void smartDelay(unsigned long ms);
 void dateTimePrint(TinyGPSDate &d, TinyGPSTime &t);
 void printCapteurs();
@@ -222,15 +231,74 @@ void loop()
 
   printCapteurs();
 
-  safePrintSerialln("sending msg_ESP to esp...");
-  Serial6.write((uint8_t *)&aenvoyer._msg, sizeof(msg_ESP));
-  safePrintSerialln("...msg_sent");
+  if(safeSendX1())
+  {
+    safePrintSerialln("Successfully sent")
+  }
+  else
+  {
+    safePrintSerialln("failed to sent")
+  }
+
 
   delay(40000);
 }
 
 /*---------------------Fonctions utilitaires----------------------*/
 
+bool safesSendX1()
+{
+  uint32_t timer = millis();
+  bool timeout = false;
+  while (Serial6.available() == 0)
+  {
+    if(millis() > timer +TIMEOUT_MS)
+    {
+      break;
+      timeout = true;
+    }
+  }     //wait for data available
+  if(timeout == false)
+  {
+    String teststr = Serial.readString();  //read until timeout
+    teststr.trim();                        // remove any \r \n whitespace at the end of the String
+    if (teststr == "READY") 
+    {
+      safePrintSerialln("Received Ready");
+      aenvoyer.send();
+      timer = millis();
+      while (Serial6.available() == 0)
+      {
+        if(millis() > timer +TIMEOUT_MS)
+        {
+          break;
+          timeout = true;
+        }
+      }     //wait for data available
+      if(timeout == false)
+      {
+        teststr = Serial.readString();  //read until timeout
+        teststr.trim();  
+        if (teststr == "OK") 
+        {
+          safePrintSerialln("No Received  OK:");
+          safePrintSerialln(teststr);
+          return true;
+        }
+        else
+        {
+          return false;
+        }
+      } 
+    }
+    else 
+    {
+      safePrintSerialln("No Received  Ready :");
+      safePrintSerialln(teststr);
+      return false;
+    }
+  }
+}
 
 
 // This custom version of delay() ensures that the gps object
