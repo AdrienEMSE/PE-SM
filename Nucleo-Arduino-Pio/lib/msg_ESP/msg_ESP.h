@@ -7,6 +7,7 @@
 
 #define           poly     0x1021          /* crc-ccitt mask */
 
+#define DEBUG
 
 #ifdef DEBUG
 
@@ -19,6 +20,8 @@
 #define safePrintSerialln(x)
 
 #endif
+
+#define TIMEOUT_MS 5000 //timeout pour la communication liaison série ESP
 
 typedef struct _time
 {
@@ -78,6 +81,7 @@ class msg_ESP_class
 private:
   void augment_message_crc(unsigned short* crc);
   void iteration_crc(unsigned short ch, unsigned short* crc);
+  void flush();
   HardwareSerial* Serial_ESP;
 public:
   msg_ESP _msg;
@@ -86,6 +90,8 @@ public:
   uint16_t updateCrc(); // permet de calculer le crc
   bool iscrcOk();
   void send();
+  bool safeSendX1();
+  bool safeSendXN(int n);
 };
 
 

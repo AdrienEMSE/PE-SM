@@ -9,11 +9,92 @@ msg_ESP_class::~msg_ESP_class()
 {
 }
 
+void msg_ESP_class::flush()
+{
+  if(Serial_ESP->available())
+  {
+    while(Serial_ESP->available())
+    {
+      Serial_ESP->read();
+    }
+  }
+}
+
+
 void msg_ESP_class::send()
 {
   safePrintSerialln("sending msg_ESP to esp...");
   Serial_ESP->write((uint8_t *)&_msg, sizeof(msg_ESP));
   safePrintSerialln("...msg_sent");
+}
+
+bool msg_ESP_class::safeSendX1()
+{
+  uint32_t timer = millis();
+  bool timeout = false;
+  flush();
+  while (Serial_ESP->available() == 0)
+  {
+    if(millis() > timer +TIMEOUT_MS)
+    {
+
+      safePrintSerialln("Timeout");
+      return false;
+    }
+  }     //wait for data available
+
+  String teststr = Serial_ESP->readStringUntil('\n');  //read until timeout
+  teststr.trim();                        // remove any \r \n whitespace at the end of the String
+  if ( teststr.startsWith("READY") || teststr.endsWith("READY"))
+  {
+    safePrintSerialln("Received Ready");
+    flush();
+    send();
+    timer = millis();
+    while (Serial_ESP->available() == 0)
+    {
+      if(millis() > timer +TIMEOUT_MS)
+      {
+      safePrintSerialln("Timeout");
+      return false;
+        
+      }
+    }     //wait for data available
+
+    String teststr2 = Serial_ESP->readStringUntil('\n');  //read until timeout
+    teststr2.trim();  
+    if (teststr2.startsWith("OK") || teststr2.endsWith("OK")) 
+    {
+      safePrintSerialln("Received OK");
+      return true;
+    }
+    else
+    {
+      safePrintSerialln("No Received  OK:");
+      safePrintSerialln(teststr2);
+      return false;
+    }
+  }
+  else 
+  {
+    safePrintSerialln("No Received  Ready :");
+    safePrintSerialln(teststr);
+    return false;
+  } 
+    
+}
+
+bool msg_ESP_class::safeSendXN(int n)
+{
+    for(int i = 0; i<n; i++)
+    {
+        if(safeSendX1())
+        {
+            return true;
+        }
+    }
+    return false;
+
 }
 
 uint16_t msg_ESP_class::updateCrc()

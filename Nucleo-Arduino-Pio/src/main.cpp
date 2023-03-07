@@ -46,7 +46,7 @@
 #define DHTTYPE DHT22 // DHT 22 (AM2302)
 // #define DHTTYPE    DHT21     // DHT 21 (AM2301)
 
-#define TIMEOUT_MS 5000 //timeout pour la communication liaison série ESP
+
 
 /*----------PINS----------*/
 
@@ -93,7 +93,6 @@ msg_ESP_class aenvoyer(&Serial6);
 
 /*----------PROTOTYPES----------*/
 
-bool safeSendX1();
 void smartDelay(unsigned long ms);
 void dateTimePrint(TinyGPSDate &d, TinyGPSTime &t);
 void printCapteurs();
@@ -105,200 +104,175 @@ void setup()
 
   Serial.begin(9600);    // Liaison serie vers Ordinateur
   Serial6.begin(115200); // Liaison serie ESP
-  ss.begin(GPSBaud);     // Liaison serie GPS
-  Wire2.begin();         // I2C Skytemp
+  // ss.begin(GPSBaud);     // Liaison serie GPS
+  // Wire2.begin();         // I2C Skytemp
 
-  while (!Serial); // Atente de l'ouverture de Serial
+  // while (!Serial); // Atente de l'ouverture de Serial
 
-  safePrintSerialln("VEML6070 Test");
-  capteurUV.begin(VEML6070_1_T);
-  safePrintSerialln(F("DHTxx Unified Sensor Example"));
-  capteurTempHum.begin();
+  // safePrintSerialln("VEML6070 Test");
+  // capteurUV.begin(VEML6070_1_T);
+  // safePrintSerialln(F("DHTxx Unified Sensor Example"));
+  // capteurTempHum.begin();
 
-  safePrintSerialln("Adafruit MLX90614 Emissivity Setter.\n");
-  if (!capteurTempCiel.begin(0x69, &Wire2)) // il faut re-init si on coupe l'alimentation au capteur (en premiere approche)
-  {
-    safePrintSerialln("Error connecting to MLX sensor. Check wiring.");
-    while (1);
-  }
+  // safePrintSerialln("Adafruit MLX90614 Emissivity Setter.\n");
+  // if (!capteurTempCiel.begin(0x69, &Wire2)) // il faut re-init si on coupe l'alimentation au capteur (en premiere approche)
+  // {
+  //   safePrintSerialln("Error connecting to MLX sensor. Check wiring.");
+  //   while (1);
+  // }
 
-  safePrintSerialln("CCS811 test"); /* --- SETUP CCS811 on 0x5A ------ */
-  if (!ccs.begin(0x5B))
-  {
-    safePrintSerialln("Failed to start sensor! Please check your wiring.");
-    while (1);
-  }
-  while (!ccs.available());
-  ccs.setDriveMode(CCS811_DRIVE_MODE_60SEC);
-  pinMode(sleep_gpio_ccs_Pin, HIGH);
+  // safePrintSerialln("CCS811 test"); /* --- SETUP CCS811 on 0x5A ------ */
+  // if (!ccs.begin(0x5B))
+  // {
+  //   safePrintSerialln("Failed to start sensor! Please check your wiring.");
+  //   while (1);
+  // }
+  // while (!ccs.available());
+  // ccs.setDriveMode(CCS811_DRIVE_MODE_60SEC);
+  // pinMode(sleep_gpio_ccs_Pin, HIGH);
 
-  safePrintSerialln("BMP280 test"); /* --- SETUP BMP on 0x76 ------ */
-  if (!bmp280.begin(0x76))
-  {
-    safePrintSerialln("Could not find a valid BMP280 sensor, check wiring!");
-    while (true);
-  }
+  // safePrintSerialln("BMP280 test"); /* --- SETUP BMP on 0x76 ------ */
+  // if (!bmp280.begin(0x76))
+  // {
+  //   safePrintSerialln("Could not find a valid BMP280 sensor, check wiring!");
+  //   while (true);
+  // }
 
-  safePrintSerialln("ClosedCube HDC1080 Arduino Test");
-  hdc1080.begin(0x40);
+  // safePrintSerialln("ClosedCube HDC1080 Arduino Test");
+  // hdc1080.begin(0x40);
 
-  pinMode(pinPluvioAnalog, INPUT_ANALOG);
-  pinMode(pinPluvioGPIO, INPUT_PULLDOWN);
+  // pinMode(pinPluvioAnalog, INPUT_ANALOG);
+  // pinMode(pinPluvioGPIO, INPUT_PULLDOWN);
 }
 
 void loop()
 {
 
-  capteurUV.sleep(false);                       // pas besoin de réinitialiser
-  aenvoyer._msg.uv_index_level = capteurUV.readUV(); // pour interpréter: https://www.vishay.com/docs/84310/designingveml6070.pdf page 5
-  capteurUV.sleep(true);                        // diminue la conso à 1 microA
+  // capteurUV.sleep(false);                       // pas besoin de réinitialiser
+  // aenvoyer._msg.uv_index_level = capteurUV.readUV(); // pour interpréter: https://www.vishay.com/docs/84310/designingveml6070.pdf page 5
+  // capteurUV.sleep(true);                        // diminue la conso à 1 microA
 
-  // attention fonctionnement de la librairie basé sur HAL_GetTick (parce que protocole de communication non conventionnel)
-  // en particulier pour vérifier que 2s se sont écoulées depuis le dernier échantillonnage
-  // donc prudence si on désactive les ticks si on passe en mode économie d'énergie le microcontrôleur
+  // // attention fonctionnement de la librairie basé sur HAL_GetTick (parce que protocole de communication non conventionnel)
+  // // en particulier pour vérifier que 2s se sont écoulées depuis le dernier échantillonnage
+  // // donc prudence si on désactive les ticks si on passe en mode économie d'énergie le microcontrôleur
 
-  // Get temperature event and print its value.
-  sensors_event_t event;
-  capteurTempHum.temperature().getEvent(&event);
-  if (isnan(event.temperature))
-  {
-    safePrintSerialln(F("Error reading temperature DHT!"));
-  }
-  else
-  {
-    aenvoyer._msg.dht_temp_celsius = event.temperature;
-  }
-  // Get humidity event and print its value.
-  capteurTempHum.humidity().getEvent(&event);
-  if (isnan(event.relative_humidity))
-  {
-    safePrintSerialln(F("Error reading humidity DHT!"));
-  }
-  else
-  {
-    aenvoyer._msg.dht_humidite_relative = event.relative_humidity;
-  }
+  // // Get temperature event and print its value.
+  // sensors_event_t event;
+  // capteurTempHum.temperature().getEvent(&event);
+  // if (isnan(event.temperature))
+  // {
+  //   safePrintSerialln(F("Error reading temperature DHT!"));
+  // }
+  // else
+  // {
+  //   aenvoyer._msg.dht_temp_celsius = event.temperature;
+  // }
+  // // Get humidity event and print its value.
+  // capteurTempHum.humidity().getEvent(&event);
+  // if (isnan(event.relative_humidity))
+  // {
+  //   safePrintSerialln(F("Error reading humidity DHT!"));
+  // }
+  // else
+  // {
+  //   aenvoyer._msg.dht_humidite_relative = event.relative_humidity;
+  // }
 
-  capteurTempCiel.begin(0x69, &Wire2);
-  aenvoyer._msg.temp_object_celsius_sky = capteurTempCiel.readObjectTempC();
-  aenvoyer._msg.temp_ambiant_celsius_sky = capteurTempCiel.readAmbientTempC();
+  // capteurTempCiel.begin(0x69, &Wire2);
+  // aenvoyer._msg.temp_object_celsius_sky = capteurTempCiel.readObjectTempC();
+  // aenvoyer._msg.temp_ambiant_celsius_sky = capteurTempCiel.readAmbientTempC();
 
-  uint32_t rain_read = analogRead(pinPluvioAnalog);
-  int rain_GPIO = digitalRead(pinPluvioGPIO);
-  float rainPercent = (seuil_haut / (seuil_haut - seuil_bas)) - ((float)rain_read) / (seuil_haut - seuil_bas);
-  if (rainPercent > 1.0)
-    rainPercent = 1.0;
-  else if (rainPercent < 0.0)
-    rainPercent = 0.0;
+  // uint32_t rain_read = analogRead(pinPluvioAnalog);
+  // int rain_GPIO = digitalRead(pinPluvioGPIO);
+  // float rainPercent = (seuil_haut / (seuil_haut - seuil_bas)) - ((float)rain_read) / (seuil_haut - seuil_bas);
+  // if (rainPercent > 1.0)
+  //   rainPercent = 1.0;
+  // else if (rainPercent < 0.0)
+  //   rainPercent = 0.0;
 
-  aenvoyer._msg.pluie_gpio = rain_GPIO;
-  aenvoyer._msg.pluie_pourcentage = rainPercent;
+  // aenvoyer._msg.pluie_gpio = rain_GPIO;
+  // aenvoyer._msg.pluie_pourcentage = rainPercent;
 
-  aenvoyer._msg.pression_Pa_bmp = bmp280.readPressure();
-  aenvoyer._msg.temperature_celsius_bmp = bmp280.readTemperature();
+  // aenvoyer._msg.pression_Pa_bmp = bmp280.readPressure();
+  // aenvoyer._msg.temperature_celsius_bmp = bmp280.readTemperature();
 
-  aenvoyer._msg.temperature_celsius_hdc = hdc1080.readTemperature();
-  aenvoyer._msg.humidite_relative_hdc = hdc1080.readHumidity();
+  // aenvoyer._msg.temperature_celsius_hdc = hdc1080.readTemperature();
+  // aenvoyer._msg.humidite_relative_hdc = hdc1080.readHumidity();
 
-  pinMode(sleep_gpio_ccs_Pin, LOW);
-  if (ccs.available())
-  {
-    if (!ccs.readData())
-    {
-      aenvoyer._msg.co2_ppm = ccs.geteCO2();
-      aenvoyer._msg.tvoc_index = ccs.getTVOC();
-    }
-    else
-    {
-      safePrintSerialln("ERROR air quality CCS!");
-      while (1);
-    }
-  }
-  pinMode(sleep_gpio_ccs_Pin, HIGH);
+  // pinMode(sleep_gpio_ccs_Pin, LOW);
+  // if (ccs.available())
+  // {
+  //   if (!ccs.readData())
+  //   {
+  //     aenvoyer._msg.co2_ppm = ccs.geteCO2();
+  //     aenvoyer._msg.tvoc_index = ccs.getTVOC();
+  //   }
+  //   else
+  //   {
+  //     safePrintSerialln("ERROR air quality CCS!");
+  //     while (1);
+  //   }
+  // }
+  // pinMode(sleep_gpio_ccs_Pin, HIGH);
 
-  smartDelay(10000);//DELAY + permet d'utiliser le GPS
+  // smartDelay(10000);//DELAY + permet d'utiliser le GPS
 
-  aenvoyer._msg.msg_gps.msg_location.lat = gps.location.lat();
-  aenvoyer._msg.msg_gps.msg_location.lng = gps.location.lng();
-  aenvoyer._msg.msg_gps.msg_date.a = gps.date.year();
-  aenvoyer._msg.msg_gps.msg_date.j = gps.date.day();
-  aenvoyer._msg.msg_gps.msg_date.m = gps.date.month();
-  aenvoyer._msg.msg_gps.msg_time.hour = gps.time.hour();
-  aenvoyer._msg.msg_gps.msg_time.min = gps.time.minute();
-  aenvoyer._msg.msg_gps.msg_time.sec = gps.time.second();
-  safePrintSerialln();
+  // aenvoyer._msg.msg_gps.msg_location.lat = gps.location.lat();
+  // aenvoyer._msg.msg_gps.msg_location.lng = gps.location.lng();
+  // aenvoyer._msg.msg_gps.msg_date.a = gps.date.year();
+  // aenvoyer._msg.msg_gps.msg_date.j = gps.date.day();
+  // aenvoyer._msg.msg_gps.msg_date.m = gps.date.month();
+  // aenvoyer._msg.msg_gps.msg_time.hour = gps.time.hour();
+  // aenvoyer._msg.msg_gps.msg_time.min = gps.time.minute();
+  // aenvoyer._msg.msg_gps.msg_time.sec = gps.time.second();
+  // safePrintSerialln();
   
 
-  printCapteurs();
+  // printCapteurs();
 
-  if(safeSendX1())
+
+  aenvoyer._msg.uv_index_level = 1;
+  aenvoyer._msg.tvoc_index = 1;
+  aenvoyer._msg.temperature_celsius_hdc = 30.0;
+  aenvoyer._msg.temperature_celsius_bmp = 30.0;
+  aenvoyer._msg.temp_object_celsius_sky = 20.0;
+  aenvoyer._msg.temp_ambiant_celsius_sky = 25.0;
+  aenvoyer._msg.pression_Pa_bmp = 5.0;
+  aenvoyer._msg.pluie_pourcentage = 0.3;
+  aenvoyer._msg.pluie_gpio = 1;
+  aenvoyer._msg.humidite_relative_hdc = 0.4;
+  aenvoyer._msg.dht_temp_celsius = 30.0;
+  aenvoyer._msg.dht_humidite_relative = 0.5;
+  aenvoyer._msg.co2_ppm = 30;
+  aenvoyer._msg.msg_gps.msg_date.a = 2033;
+  aenvoyer._msg.msg_gps.msg_date.j = 7;
+  aenvoyer._msg.msg_gps.msg_date.m = 4;
+  aenvoyer._msg.msg_gps.msg_location.lat = 30.0;
+  aenvoyer._msg.msg_gps.msg_location.lng = 40.0;
+  aenvoyer._msg.msg_gps.msg_time.hour = 10;
+  aenvoyer._msg.msg_gps.msg_time.min = 50;
+  aenvoyer._msg.msg_gps.msg_time.sec = 35;
+  aenvoyer._msg.crc = 0xffff;
+  aenvoyer.updateCrc();
+
+  
+
+  if(aenvoyer.safeSendX1())
   {
-    safePrintSerialln("Successfully sent")
+    safePrintSerialln("Successfully sent");
   }
   else
   {
-    safePrintSerialln("failed to sent")
+    safePrintSerialln("failed to sent");
   }
 
 
-  delay(40000);
+  delay(5000);
 }
 
 /*---------------------Fonctions utilitaires----------------------*/
 
-bool safesSendX1()
-{
-  uint32_t timer = millis();
-  bool timeout = false;
-  while (Serial6.available() == 0)
-  {
-    if(millis() > timer +TIMEOUT_MS)
-    {
-      break;
-      timeout = true;
-    }
-  }     //wait for data available
-  if(timeout == false)
-  {
-    String teststr = Serial.readString();  //read until timeout
-    teststr.trim();                        // remove any \r \n whitespace at the end of the String
-    if (teststr == "READY") 
-    {
-      safePrintSerialln("Received Ready");
-      aenvoyer.send();
-      timer = millis();
-      while (Serial6.available() == 0)
-      {
-        if(millis() > timer +TIMEOUT_MS)
-        {
-          break;
-          timeout = true;
-        }
-      }     //wait for data available
-      if(timeout == false)
-      {
-        teststr = Serial.readString();  //read until timeout
-        teststr.trim();  
-        if (teststr == "OK") 
-        {
-          safePrintSerialln("No Received  OK:");
-          safePrintSerialln(teststr);
-          return true;
-        }
-        else
-        {
-          return false;
-        }
-      } 
-    }
-    else 
-    {
-      safePrintSerialln("No Received  Ready :");
-      safePrintSerialln(teststr);
-      return false;
-    }
-  }
-}
+
 
 
 // This custom version of delay() ensures that the gps object
