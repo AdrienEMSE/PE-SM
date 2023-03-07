@@ -9,6 +9,12 @@ msg_ESP_class::~msg_ESP_class()
 {
 }
 
+void msg_ESP_class::send()
+{
+  safePrintSerialln("sending msg_ESP to esp...");
+  Serial_ESP->write((uint8_t *)&_msg, sizeof(msg_ESP));
+  safePrintSerialln("...msg_sent");
+}
 
 uint16_t msg_ESP_class::updateCrc()
 {

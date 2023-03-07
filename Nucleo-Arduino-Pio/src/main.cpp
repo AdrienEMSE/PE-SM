@@ -26,19 +26,19 @@
 
 /*----------MACRO----------*/
 
-#define DEBUG
+// #define DEBUG
 
-#ifdef DEBUG
+// #ifdef DEBUG
 
-#define safePrintSerial(x) Serial.print(x)
-#define safePrintSerialln(x) Serial.println(x)
+// #define safePrintSerial(x) Serial.print(x)
+// #define safePrintSerialln(x) Serial.println(x)
 
-#else
+// #else
 
-#define safePrintSerial(x)
-#define safePrintSerialln(x)
+// #define safePrintSerial(x)
+// #define safePrintSerialln(x)
 
-#endif
+// #endif
 
 // Uncomment the type of sensor in use:
 // #define DHTTYPE    DHT11     // DHT 11
@@ -223,7 +223,7 @@ void loop()
   printCapteurs();
 
   safePrintSerialln("sending msg_ESP to esp...");
-  Serial6.write((uint8_t *)&aenvoyer, sizeof(msg_ESP));
+  Serial6.write((uint8_t *)&aenvoyer._msg, sizeof(msg_ESP));
   safePrintSerialln("...msg_sent");
 
   delay(40000);
@@ -245,19 +245,7 @@ void smartDelay(unsigned long ms)
   } while (millis() - start < ms);
 }
 
-void printInt(unsigned long val, bool valid, int len)
-{
-  char sz[32] = "*****************";
-  if (valid)
-    sprintf(sz, "%ld", val);
-  sz[len] = 0;
-  for (int i = strlen(sz); i < len; ++i)
-    sz[i] = ' ';
-  if (len > 0)
-    sz[len - 1] = ' ';
-  safePrintSerial(sz);
-  smartDelay(0);
-}
+
 
 void dateTimePrint(TinyGPSDate &d, TinyGPSTime &t)
 {
@@ -288,13 +276,7 @@ void dateTimePrint(TinyGPSDate &d, TinyGPSTime &t)
   smartDelay(0);
 }
 
-void printStr(const char *str, int len)
-{
-  int slen = strlen(str);
-  for (int i = 0; i < len; ++i)
-    safePrintSerial(i < slen ? str[i] : ' ');
-  smartDelay(0);
-}
+
 
 void printCapteurs()
 {

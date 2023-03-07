@@ -7,6 +7,19 @@
 
 #define           poly     0x1021          /* crc-ccitt mask */
 
+
+#ifdef DEBUG
+
+#define safePrintSerial(x) Serial.print(x)
+#define safePrintSerialln(x) Serial.println(x)
+
+#else
+
+#define safePrintSerial(x)
+#define safePrintSerialln(x)
+
+#endif
+
 typedef struct _time
 {
   uint16_t hour;
@@ -72,6 +85,7 @@ public:
   ~msg_ESP_class();
   uint16_t updateCrc(); // permet de calculer le crc
   bool iscrcOk();
+  void send();
 };
 
 
