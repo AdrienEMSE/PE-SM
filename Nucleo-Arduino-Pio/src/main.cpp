@@ -33,7 +33,7 @@
 #define DHTTYPE DHT22 // DHT 22 (AM2302)
 // #define DHTTYPE    DHT21     // DHT 21 (AM2301)
 
-
+#define TIMEOUT_GPS 6000
 
 /*----------PINS----------*/
 
@@ -41,10 +41,17 @@
 static const uint32_t pinPluvioAnalog = A4;
 static const uint32_t pinPluvioGPIO = D2;
 static const int RXPin = D4, TXPin = D7; // PIN Liaison série GPS
-static const int sleep_gpio_ccs_Pin = D5;
+static const int wake_ccs = D5;
 static const int dht_pin = D3; // Digital pin connected to the DHT sensor
 static const int anemo_phase_1 = A1, anemo_phase_2 = A2;
 static const int capteur_de_foudre = A3;
+
+static const int alimentation_gps = D8;
+static const int alimentation_dht = D9;
+static const int alimentation_skytemp = D10;
+static const int alimentation_pluvio = D11;
+static const int alimentation_lumi = D12;
+static const int alimentation_ESP = D13;
 
 /*----------PARAMS----------*/
 
@@ -94,20 +101,69 @@ void setup()
   ss.begin(GPSBaud);     // Liaison serie GPS
   Wire2.begin();         // I2C Skytemp
 
-  while (!Serial); // Atente de l'ouverture de Serial
+  pinMode(pinPluvioAnalog, INPUT_ANALOG);
+  pinMode(pinPluvioGPIO, INPUT_PULLDOWN);
+
+  pinMode(wake_ccs,OUTPUT);
+  digitalWrite(wake_ccs,HIGH);
+  
+  pinMode(alimentation_dht,OUTPUT);
+  pinMode(alimentation_skytemp,OUTPUT);
+  pinMode(alimentation_lumi,OUTPUT);
+  pinMode(alimentation_ESP,OUTPUT);
+  pinMode(alimentation_gps,OUTPUT);
+  
+  
+  
+  digitalWrite(alimentation_dht,LOW); 
+  digitalWrite(alimentation_skytemp,LOW);
+  digitalWrite(alimentation_pluvio,LOW);
+  digitalWrite(alimentation_lumi,LOW);
+  digitalWrite(alimentation_ESP,LOW);
+  digitalWrite(alimentation_gps,LOW);//POWER GPS ON (PMOS)
+  
+  
+
+  bool gps_ok = false;
+  uint32_t timer = millis();
+  while(!gps_ok)
+  {
+    smartDelay(1);
+    if(gps.date.day() != 0)
+    {
+      gps_ok = true;
+      safePrintSerialln("Le gps a atteint le satellite");
+    }
+    if(millis() > timer + 10000)
+    {
+      timer = millis();
+      safePrintSerialln("Le gps n'a toujours pas atteint le GPS...");
+    }
+
+
+  }   
+  digitalWrite(alimentation_gps,HIGH); //POWER GPS OFF (PMOS)
+
+
+
+
 
   safePrintSerialln("VEML6070 Test");
   capteurUV.begin(VEML6070_1_T);
+
   safePrintSerialln(F("DHTxx Unified Sensor Example"));
   capteurTempHum.begin();
 
+  digitalWrite(alimentation_skytemp,HIGH);
   safePrintSerialln("Adafruit MLX90614 Emissivity Setter.\n");
   if (!capteurTempCiel.begin(0x69, &Wire2)) // il faut re-init si on coupe l'alimentation au capteur (en premiere approche)
   {
     safePrintSerialln("Error connecting to MLX sensor. Check wiring.");
     while (1);
   }
+  digitalWrite(alimentation_skytemp,LOW);
 
+  digitalWrite(wake_ccs, LOW);
   safePrintSerialln("CCS811 test"); /* --- SETUP CCS811 on 0x5A ------ */
   if (!ccs.begin(0x5B))
   {
@@ -116,7 +172,7 @@ void setup()
   }
   while (!ccs.available());
   ccs.setDriveMode(CCS811_DRIVE_MODE_60SEC);
-  pinMode(sleep_gpio_ccs_Pin, HIGH);
+  digitalWrite(wake_ccs, HIGH);
 
   safePrintSerialln("BMP280 test"); /* --- SETUP BMP on 0x76 ------ */
   if (!bmp280.begin(0x76))
@@ -128,8 +184,7 @@ void setup()
   safePrintSerialln("ClosedCube HDC1080 Arduino Test");
   hdc1080.begin(0x40);
 
-  pinMode(pinPluvioAnalog, INPUT_ANALOG);
-  pinMode(pinPluvioGPIO, INPUT_PULLDOWN);
+
 }
 
 void loop()
@@ -144,6 +199,7 @@ void loop()
   // donc prudence si on désactive les ticks si on passe en mode économie d'énergie le microcontrôleur
 
   // Get temperature event and print its value.
+  digitalWrite(alimentation_dht,HIGH);
   sensors_event_t event;
   capteurTempHum.temperature().getEvent(&event);
   if (isnan(event.temperature))
@@ -164,18 +220,26 @@ void loop()
   {
     aenvoyer._msg.dht_humidite_relative = event.relative_humidity;
   }
+  digitalWrite(alimentation_dht,LOW);
 
+
+  digitalWrite(alimentation_skytemp,HIGH);
   capteurTempCiel.begin(0x69, &Wire2);
   aenvoyer._msg.temp_object_celsius_sky = capteurTempCiel.readObjectTempC();
   aenvoyer._msg.temp_ambiant_celsius_sky = capteurTempCiel.readAmbientTempC();
+  digitalWrite(alimentation_skytemp,LOW);
 
+
+  digitalWrite(alimentation_pluvio,HIGH);
   uint32_t rain_read = analogRead(pinPluvioAnalog);
   int rain_GPIO = digitalRead(pinPluvioGPIO);
+  digitalWrite(alimentation_pluvio,LOW);
   float rainPercent = (seuil_haut / (seuil_haut - seuil_bas)) - ((float)rain_read) / (seuil_haut - seuil_bas);
   if (rainPercent > 1.0)
     rainPercent = 1.0;
   else if (rainPercent < 0.0)
     rainPercent = 0.0;
+  
 
   aenvoyer._msg.pluie_gpio = rain_GPIO;
   aenvoyer._msg.pluie_pourcentage = rainPercent;
@@ -186,7 +250,7 @@ void loop()
   aenvoyer._msg.temperature_celsius_hdc = hdc1080.readTemperature();
   aenvoyer._msg.humidite_relative_hdc = hdc1080.readHumidity();
 
-  pinMode(sleep_gpio_ccs_Pin, LOW);
+  digitalWrite(wake_ccs, LOW);
   if (ccs.available())
   {
     if (!ccs.readData())
@@ -200,9 +264,12 @@ void loop()
       while (1);
     }
   }
-  pinMode(sleep_gpio_ccs_Pin, HIGH);
+  digitalWrite(wake_ccs, HIGH);
 
-  smartDelay(10000);//DELAY + permet d'utiliser le GPS
+
+  digitalWrite(alimentation_gps,LOW); //Power on GPS
+  smartDelay(2000);//DELAY + permet d'utiliser le GPS
+  digitalWrite(alimentation_gps,HIGH);//Power off GPS
 
   aenvoyer._msg.msg_gps.msg_location.lat = gps.location.lat();
   aenvoyer._msg.msg_gps.msg_location.lng = gps.location.lng();
@@ -243,7 +310,7 @@ void loop()
   // aenvoyer.updateCrc();
 
   
-
+  // digitalWrite(alimentation_ESP,HIGH);
   // if(aenvoyer.safeSendX1())
   // {
   //   safePrintSerialln("Successfully sent");
@@ -252,6 +319,7 @@ void loop()
   // {
   //   safePrintSerialln("failed to sent");
   // }
+  // digitalWrite(alimentation_ESP,LOW);
 
 
   delay(5000);
