@@ -33,7 +33,7 @@
 #define DHTTYPE DHT22 // DHT 22 (AM2302)
 // #define DHTTYPE    DHT21     // DHT 21 (AM2301)
 
-#define TIMEOUT_GPS 6000
+
 
 /*----------PINS----------*/
 
