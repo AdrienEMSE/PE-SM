@@ -62,8 +62,8 @@ static const uint32_t GPSBaud = 9600;    // BAUD GPS
 
 /*----------VAR----------*/
 
-  String receive_string;
-  String send_string;
+  // String receive_string;
+  // String send_string;
 
 /*----------STRUCT ET CLASSES----------*/
 
