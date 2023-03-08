@@ -19,6 +19,7 @@
 #include <Adafruit_MLX90614.h>
 #include <Adafruit_CCS811.h> // include library for CCS811 - Sensor from martin-pennings https://github.com/maarten-pennings/CCS811
 #include <Adafruit_BMP280.h> // include main library for BMP280 - Sensor
+#include "Adafruit_TCS34725.h" // capteur de luminosite
 
 #include "ClosedCube_HDC1080.h"
 
@@ -73,6 +74,7 @@ SoftwareSerial ss(RXPin, TXPin); // Liaison série vers GPS
 
 DHT_Unified capteurTempHum(dht_pin, DHTTYPE);
 
+Adafruit_TCS34725 capteurLum = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_614MS, TCS34725_GAIN_1X);
 
 Adafruit_VEML6070 capteurUV = Adafruit_VEML6070();       // une résistance de RSET=270kOhms est soudée sur le capteur
 Adafruit_MLX90614 capteurTempCiel = Adafruit_MLX90614(); // par défaut addr=0x5A
@@ -124,8 +126,42 @@ void setup()
   digitalWrite(alimentation_ESP,LOW);
   digitalWrite(alimentation_gps,LOW);//POWER GPS ON (PMOS)
   
-  
+  digitalWrite(alimentation_lumi,HIGH);
+  if (capteurLum.begin()) 
+  {
+    safePrintSerialln("Found sensor");
+  } 
+  else 
+  {
+    safePrintSerialln("No TCS34725 found ... check your connections");
+    while (1);
+  }
+  digitalWrite(alimentation_lumi,LOW);
 
+  while(1)
+  {
+
+    digitalWrite(alimentation_lumi,HIGH);
+    capteurLum.enable();
+    delay(1000);
+    uint16_t r, g, b, c, colorTemp, lux;
+
+    capteurLum.getRawData(&r, &g, &b, &c);
+    // colorTemp = tcs.calculateColorTemperature(r, g, b);
+    colorTemp = capteurLum.calculateColorTemperature_dn40(r, g, b, c);
+    lux = capteurLum.calculateLux(r, g, b);
+
+    safePrintSerial("Color Temp: "); safePrintSerial2(colorTemp, DEC); safePrintSerial(" K - ");
+    safePrintSerial("Lux: "); safePrintSerial2(lux, DEC); safePrintSerial(" - ");
+    safePrintSerial("R: "); safePrintSerial2(r, DEC); safePrintSerial(" ");
+    safePrintSerial("G: "); safePrintSerial2(g, DEC); safePrintSerial(" ");
+    safePrintSerial("B: "); safePrintSerial2(b, DEC); safePrintSerial(" ");
+    safePrintSerial("C: "); safePrintSerial2(c, DEC); safePrintSerial(" ");
+    safePrintSerialln(" ");
+    digitalWrite(alimentation_lumi,LOW);
+    capteurLum.disable();
+    delay(3000);
+  }
   bool gps_ok = false;
   uint32_t timer = millis();
   while(!gps_ok)

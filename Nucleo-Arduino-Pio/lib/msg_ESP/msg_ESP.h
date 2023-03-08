@@ -13,11 +13,16 @@
 
 #define safePrintSerial(x) Serial.print(x)
 #define safePrintSerialln(x) Serial.println(x)
+#define safePrintSerial2(x,y) Serial.print(x,y)
+#define safePrintSerialln2(x,y) Serial.println(x,y)
 
 #else
 
 #define safePrintSerial(x)
 #define safePrintSerialln(x)
+#define safePrintSerial2(x,y)
+#define safePrintSerialln2(x,y) 
+
 
 #endif
 
