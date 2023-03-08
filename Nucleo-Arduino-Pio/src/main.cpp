@@ -52,6 +52,7 @@ static const int alimentation_skytemp = D10;
 static const int alimentation_pluvio = D11;
 static const int alimentation_lumi = D12;
 static const int alimentation_ESP = D13;
+static const int alimentation_anemo = PE10;
 
 /*----------PARAMS----------*/
 
@@ -107,6 +108,7 @@ void setup()
   pinMode(wake_ccs,OUTPUT);
   digitalWrite(wake_ccs,HIGH);
   
+  pinMode(alimentation_anemo,OUTPUT);
   pinMode(alimentation_dht,OUTPUT);
   pinMode(alimentation_skytemp,OUTPUT);
   pinMode(alimentation_lumi,OUTPUT);
@@ -114,7 +116,7 @@ void setup()
   pinMode(alimentation_gps,OUTPUT);
   
   
-  
+  digitalWrite(alimentation_anemo,LOW);
   digitalWrite(alimentation_dht,LOW); 
   digitalWrite(alimentation_skytemp,LOW);
   digitalWrite(alimentation_pluvio,LOW);
