@@ -248,6 +248,7 @@ bool msg_ESP_class::iscrcOk(msg_type type)
           return false;
       }
     }
+    return false;
 
 }
 
