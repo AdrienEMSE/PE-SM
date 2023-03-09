@@ -138,11 +138,23 @@ void setup()
     {
       gps_ok = true;
       safePrintSerialln("Le gps a atteint le satellite");
+      aenvoyer._msg_location.lat =gps.location.lat();
+      aenvoyer._msg_location.lng =gps.location.lng();
+      digitalWrite(alimentation_ESP,HIGH);
+      if(aenvoyer.safeSendX1(msg_type::gps_msg))
+      {
+        safePrintSerialln("Successfully sent GPS");
+      }
+      else
+      {
+        safePrintSerialln("failed to sent GPS");
+      }
+      digitalWrite(alimentation_ESP,LOW);
     }
     if(millis() > timer + 10000)
     {
       timer = millis();
-      safePrintSerialln("Le gps n'a toujours pas atteint le GPS...");
+      safePrintSerialln("Le gps n'a toujours pas atteint le satellite...");
     }
 
 
@@ -208,7 +220,7 @@ void loop()
 {
 
   capteurUV.sleep(false);                       // pas besoin de réinitialiser
-  aenvoyer._msg.uv_index_level = capteurUV.readUV(); // pour interpréter: https://www.vishay.com/docs/84310/designingveml6070.pdf page 5
+  aenvoyer._msg_sensor.uv_index_level = capteurUV.readUV(); // pour interpréter: https://www.vishay.com/docs/84310/designingveml6070.pdf page 5
   capteurUV.sleep(true);                        // diminue la conso à 1 microA
 
   // attention fonctionnement de la librairie basé sur HAL_GetTick (parce que protocole de communication non conventionnel)
@@ -225,7 +237,7 @@ void loop()
   }
   else
   {
-    aenvoyer._msg.dht_temp_celsius = event.temperature;
+    aenvoyer._msg_sensor.dht_temp_celsius = event.temperature;
   }
   // Get humidity event and print its value.
   capteurTempHum.humidity().getEvent(&event);
@@ -235,15 +247,15 @@ void loop()
   }
   else
   {
-    aenvoyer._msg.dht_humidite_relative = event.relative_humidity;
+    aenvoyer._msg_sensor.dht_humidite_relative = event.relative_humidity;
   }
   digitalWrite(alimentation_dht,LOW);
 
 
   digitalWrite(alimentation_skytemp,HIGH);
   capteurTempCiel.begin(0x69, &Wire2);
-  aenvoyer._msg.temp_object_celsius_sky = capteurTempCiel.readObjectTempC();
-  aenvoyer._msg.temp_ambiant_celsius_sky = capteurTempCiel.readAmbientTempC();
+  aenvoyer._msg_sensor.temp_object_celsius_sky = capteurTempCiel.readObjectTempC();
+  aenvoyer._msg_sensor.temp_ambiant_celsius_sky = capteurTempCiel.readAmbientTempC();
   digitalWrite(alimentation_skytemp,LOW);
 
 
@@ -258,22 +270,22 @@ void loop()
     rainPercent = 0.0;
   
 
-  aenvoyer._msg.pluie_gpio = rain_GPIO;
-  aenvoyer._msg.pluie_pourcentage = rainPercent;
+  aenvoyer._msg_sensor.pluie_gpio = rain_GPIO;
+  aenvoyer._msg_sensor.pluie_pourcentage = rainPercent;
 
-  aenvoyer._msg.pression_Pa_bmp = bmp280.readPressure();
-  aenvoyer._msg.temperature_celsius_bmp = bmp280.readTemperature();
+  aenvoyer._msg_sensor.pression_Pa_bmp = bmp280.readPressure();
+  aenvoyer._msg_sensor.temperature_celsius_bmp = bmp280.readTemperature();
 
-  aenvoyer._msg.temperature_celsius_hdc = hdc1080.readTemperature();
-  aenvoyer._msg.humidite_relative_hdc = hdc1080.readHumidity();
+  aenvoyer._msg_sensor.temperature_celsius_hdc = hdc1080.readTemperature();
+  aenvoyer._msg_sensor.humidite_relative_hdc = hdc1080.readHumidity();
 
   digitalWrite(wake_ccs, LOW);
   if (ccs.available())
   {
     if (!ccs.readData())
     {
-      aenvoyer._msg.co2_ppm = ccs.geteCO2();
-      aenvoyer._msg.tvoc_index = ccs.getTVOC();
+      aenvoyer._msg_sensor.co2_ppm = ccs.geteCO2();
+      aenvoyer._msg_sensor.tvoc_index = ccs.getTVOC();
     }
     else
     {
@@ -290,58 +302,46 @@ void loop()
 
   capteurLum.getRawData(&r, &g, &b, &c);
   // colorTemp = tcs.calculateColorTemperature(r, g, b);
-  aenvoyer._msg.lux = capteurLum.calculateLux(r, g, b);
+  aenvoyer._msg_sensor.lux = capteurLum.calculateLux(r, g, b);
 
   capteurLum.disable();
   digitalWrite(alimentation_lumi,LOW);
   
 
 
-  digitalWrite(alimentation_gps,LOW); //Power on GPS
-  smartDelay(2000);//DELAY + permet d'utiliser le GPS
-  digitalWrite(alimentation_gps,HIGH);//Power off GPS
 
-  aenvoyer._msg.msg_gps.msg_location.lat = gps.location.lat();
-  aenvoyer._msg.msg_gps.msg_location.lng = gps.location.lng();
-  aenvoyer._msg.msg_gps.msg_date.a = gps.date.year();
-  aenvoyer._msg.msg_gps.msg_date.j = gps.date.day();
-  aenvoyer._msg.msg_gps.msg_date.m = gps.date.month();
-  aenvoyer._msg.msg_gps.msg_time.hour = gps.time.hour();
-  aenvoyer._msg.msg_gps.msg_time.min = gps.time.minute();
-  aenvoyer._msg.msg_gps.msg_time.sec = gps.time.second();
-  safePrintSerialln();
   
 
   printCapteurs();
 
 
-  // aenvoyer._msg.uv_index_level = 1;
-  // aenvoyer._msg.tvoc_index = 1;
-  // aenvoyer._msg.temperature_celsius_hdc = 30.0;
-  // aenvoyer._msg.temperature_celsius_bmp = 30.0;
-  // aenvoyer._msg.temp_object_celsius_sky = 20.0;
-  // aenvoyer._msg.temp_ambiant_celsius_sky = 25.0;
-  // aenvoyer._msg.pression_Pa_bmp = 5.0;
-  // aenvoyer._msg.pluie_pourcentage = 0.3;
-  // aenvoyer._msg.pluie_gpio = 1;
-  // aenvoyer._msg.humidite_relative_hdc = 0.4;
-  // aenvoyer._msg.dht_temp_celsius = 30.0;
-  // aenvoyer._msg.dht_humidite_relative = 0.5;
-  // aenvoyer._msg.co2_ppm = 30;
-  // aenvoyer._msg.msg_gps.msg_date.a = 2033;
-  // aenvoyer._msg.msg_gps.msg_date.j = 7;
-  // aenvoyer._msg.msg_gps.msg_date.m = 4;
-  // aenvoyer._msg.msg_gps.msg_location.lat = 30.0;
-  // aenvoyer._msg.msg_gps.msg_location.lng = 40.0;
-  // aenvoyer._msg.msg_gps.msg_time.hour = 10;
-  // aenvoyer._msg.msg_gps.msg_time.min = 50;
-  // aenvoyer._msg.msg_gps.msg_time.sec = 35;
-  // aenvoyer._msg.crc = 0xffff;
+  // aenvoyer._msg_sensor.uv_index_level = 1;
+  // aenvoyer._msg_sensor.tvoc_index = 1;
+  // aenvoyer._msg_sensor.temperature_celsius_hdc = 30.0;
+  // aenvoyer._msg_sensor.temperature_celsius_bmp = 30.0;
+  // aenvoyer._msg_sensor.temp_object_celsius_sky = 20.0;
+  // aenvoyer._msg_sensor.temp_ambiant_celsius_sky = 25.0;
+  // aenvoyer._msg_sensor.pression_Pa_bmp = 5.0;
+  // aenvoyer._msg_sensor.pluie_pourcentage = 0.3;
+  // aenvoyer._msg_sensor.pluie_gpio = 1;
+  // aenvoyer._msg_sensor.humidite_relative_hdc = 0.4;
+  // aenvoyer._msg_sensor.dht_temp_celsius = 30.0;
+  // aenvoyer._msg_sensor.dht_humidite_relative = 0.5;
+  // aenvoyer._msg_sensor.co2_ppm = 30;
+  // aenvoyer._msg_sensor.msg_gps.msg_date.a = 2033;
+  // aenvoyer._msg_sensor.msg_gps.msg_date.j = 7;
+  // aenvoyer._msg_sensor.msg_gps.msg_date.m = 4;
+  // aenvoyer._msg_sensor.msg_gps.msg_location.lat = 30.0;
+  // aenvoyer._msg_sensor.msg_gps.msg_location.lng = 40.0;
+  // aenvoyer._msg_sensor.msg_gps.msg_time.hour = 10;
+  // aenvoyer._msg_sensor.msg_gps.msg_time.min = 50;
+  // aenvoyer._msg_sensor.msg_gps.msg_time.sec = 35;
+  // aenvoyer._msg_sensor.crc = 0xffff;
   // aenvoyer.updateCrc();
 
   
   digitalWrite(alimentation_ESP,HIGH);
-  if(aenvoyer.safeSendX1())
+  if(aenvoyer.safeSendX1(msg_type::sensor_msg))
   {
     safePrintSerialln("Successfully sent");
   }
@@ -412,36 +412,36 @@ void printCapteurs()
   safePrintSerial(F(","));
   safePrintSerialln(gps.location.lng());
   safePrintSerial("UV light level: ");
-  safePrintSerialln(aenvoyer._msg.uv_index_level);
+  safePrintSerialln(aenvoyer._msg_sensor.uv_index_level);
   safePrintSerial(F("Temperature: "));
-  safePrintSerial(aenvoyer._msg.dht_temp_celsius);
+  safePrintSerial(aenvoyer._msg_sensor.dht_temp_celsius);
   safePrintSerialln(F("°C"));
   safePrintSerial(F("Humidity: "));
-  safePrintSerial(aenvoyer._msg.dht_humidite_relative);
+  safePrintSerial(aenvoyer._msg_sensor.dht_humidite_relative);
   safePrintSerialln(F("%"));
   safePrintSerial("Temperature Objet:"); // celle à utiliser avec capteur pointé vers le ciel
-  safePrintSerialln(aenvoyer._msg.temp_object_celsius_sky);
+  safePrintSerialln(aenvoyer._msg_sensor.temp_object_celsius_sky);
   safePrintSerial("Temperature Ambiente:");
-  safePrintSerialln(aenvoyer._msg.temp_ambiant_celsius_sky);
+  safePrintSerialln(aenvoyer._msg_sensor.temp_ambiant_celsius_sky);
   safePrintSerial(" GPIO : ");
-  safePrintSerial(!aenvoyer._msg.pluie_gpio); // read GPIO at 1 when no rain, 0 when rain
+  safePrintSerial(!aenvoyer._msg_sensor.pluie_gpio); // read GPIO at 1 when no rain, 0 when rain
   safePrintSerial(" rain % : ");
-  safePrintSerialln(aenvoyer._msg.pluie_pourcentage);
+  safePrintSerialln(aenvoyer._msg_sensor.pluie_pourcentage);
   safePrintSerial("Pressure = ");
-  safePrintSerial(aenvoyer._msg.pression_Pa_bmp);
+  safePrintSerial(aenvoyer._msg_sensor.pression_Pa_bmp);
   safePrintSerialln(" Pa, ");
   safePrintSerial("BMP280 => Temperature = ");
-  safePrintSerial(aenvoyer._msg.temperature_celsius_bmp);
+  safePrintSerial(aenvoyer._msg_sensor.temperature_celsius_bmp);
   safePrintSerial(" °C, ");
   safePrintSerial("T=");
-  safePrintSerial(aenvoyer._msg.temperature_celsius_hdc);
+  safePrintSerial(aenvoyer._msg_sensor.temperature_celsius_hdc);
   safePrintSerial("C, RH=");
-  safePrintSerial(aenvoyer._msg.humidite_relative_hdc);
+  safePrintSerial(aenvoyer._msg_sensor.humidite_relative_hdc);
   safePrintSerialln("%");
   safePrintSerial("CO2: ");
-  safePrintSerial(aenvoyer._msg.co2_ppm);
+  safePrintSerial(aenvoyer._msg_sensor.co2_ppm);
   safePrintSerial("ppm, TVOC: ");
-  safePrintSerialln(aenvoyer._msg.tvoc_index);
+  safePrintSerialln(aenvoyer._msg_sensor.tvoc_index);
   safePrintSerial("Lux: "); 
-  safePrintSerialln(aenvoyer._msg.lux);
+  safePrintSerialln(aenvoyer._msg_sensor.lux);
 }
