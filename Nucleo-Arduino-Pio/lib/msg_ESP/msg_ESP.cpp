@@ -218,7 +218,7 @@ void msg_ESP_class::augment_message_crc(unsigned short* crc)
 bool msg_ESP_class::iscrcOk(msg_type type)
 {
 
-    if(type == msg_type::gps_msg)
+    if(type == msg_type::sensor_msg)
     {
       msg_ESP* msg = &_msg_sensor;
       uint16_t crcToCheck = msg->crc;
@@ -233,7 +233,7 @@ bool msg_ESP_class::iscrcOk(msg_type type)
           return false;
       }
     }
-    else
+    else if (type == msg_type::gps_msg)
     {
       location_msg *msg = &_msg_location;
       uint16_t crcToCheck = msg->crc;
@@ -247,7 +247,6 @@ bool msg_ESP_class::iscrcOk(msg_type type)
           msg->crc = crcToCheck;
           return false;
       }
-      updateCrc_gps();
     }
 
 }
