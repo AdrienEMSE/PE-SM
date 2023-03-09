@@ -19,6 +19,7 @@
 #include <Adafruit_MLX90614.h>
 #include <Adafruit_CCS811.h> // include library for CCS811 - Sensor from martin-pennings https://github.com/maarten-pennings/CCS811
 #include <Adafruit_BMP280.h> // include main library for BMP280 - Sensor
+#include "Adafruit_TCS34725.h" // capteur de luminosite
 
 #include "ClosedCube_HDC1080.h"
 
@@ -73,6 +74,7 @@ SoftwareSerial ss(RXPin, TXPin); // Liaison série vers GPS
 
 DHT_Unified capteurTempHum(dht_pin, DHTTYPE);
 
+Adafruit_TCS34725 capteurLum = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_614MS, TCS34725_GAIN_1X);
 
 Adafruit_VEML6070 capteurUV = Adafruit_VEML6070();       // une résistance de RSET=270kOhms est soudée sur le capteur
 Adafruit_MLX90614 capteurTempCiel = Adafruit_MLX90614(); // par défaut addr=0x5A
@@ -102,7 +104,7 @@ void setup()
   ss.begin(GPSBaud);     // Liaison serie GPS
   Wire2.begin();         // I2C Skytemp
 
-  pinMode(pinPluvioAnalog, INPUT_ANALOG);
+  //pinMode(pinPluvioAnalog, INPUT_ANALOG);
   pinMode(pinPluvioGPIO, INPUT_PULLDOWN);
 
   pinMode(wake_ccs,OUTPUT);
@@ -124,7 +126,8 @@ void setup()
   digitalWrite(alimentation_ESP,LOW);
   digitalWrite(alimentation_gps,LOW);//POWER GPS ON (PMOS)
   
-  
+
+
 
   bool gps_ok = false;
   uint32_t timer = millis();
@@ -185,6 +188,18 @@ void setup()
 
   safePrintSerialln("ClosedCube HDC1080 Arduino Test");
   hdc1080.begin(0x40);
+
+  digitalWrite(alimentation_lumi,HIGH);
+  if (capteurLum.begin()) 
+  {
+    safePrintSerialln("Found sensor");
+  } 
+  else 
+  {
+    safePrintSerialln("No TCS34725 found ... check your connections");
+    while (1);
+  }
+  digitalWrite(alimentation_lumi,LOW);
 
 
 }
@@ -268,6 +283,19 @@ void loop()
   }
   digitalWrite(wake_ccs, HIGH);
 
+  digitalWrite(alimentation_lumi,HIGH);
+  capteurLum.enable();
+  delay(1000);
+  uint16_t r, g, b, c, lux;
+
+  capteurLum.getRawData(&r, &g, &b, &c);
+  // colorTemp = tcs.calculateColorTemperature(r, g, b);
+  aenvoyer._msg.lux = capteurLum.calculateLux(r, g, b);
+
+  capteurLum.disable();
+  digitalWrite(alimentation_lumi,LOW);
+  
+
 
   digitalWrite(alimentation_gps,LOW); //Power on GPS
   smartDelay(2000);//DELAY + permet d'utiliser le GPS
@@ -312,16 +340,16 @@ void loop()
   // aenvoyer.updateCrc();
 
   
-  // digitalWrite(alimentation_ESP,HIGH);
-  // if(aenvoyer.safeSendX1())
-  // {
-  //   safePrintSerialln("Successfully sent");
-  // }
-  // else
-  // {
-  //   safePrintSerialln("failed to sent");
-  // }
-  // digitalWrite(alimentation_ESP,LOW);
+  digitalWrite(alimentation_ESP,HIGH);
+  if(aenvoyer.safeSendX1())
+  {
+    safePrintSerialln("Successfully sent");
+  }
+  else
+  {
+    safePrintSerialln("failed to sent");
+  }
+  digitalWrite(alimentation_ESP,LOW);
 
 
   delay(5000);
@@ -414,4 +442,6 @@ void printCapteurs()
   safePrintSerial(aenvoyer._msg.co2_ppm);
   safePrintSerial("ppm, TVOC: ");
   safePrintSerialln(aenvoyer._msg.tvoc_index);
+  safePrintSerial("Lux: "); 
+  safePrintSerialln(aenvoyer._msg.lux);
 }
