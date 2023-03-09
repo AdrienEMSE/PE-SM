@@ -72,6 +72,7 @@ typedef struct _msg_ESP // Structure de message à envoyer à l'ESP
   float temperature_celsius_bmp; // 4
   int co2_ppm; // 4
   int tvoc_index; // 4
+  uint16_t lux;
   bool pluie_gpio; // 1
   uint8_t uv_index_level; //1
   uint16_t crc; // 2

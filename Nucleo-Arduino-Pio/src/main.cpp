@@ -104,7 +104,7 @@ void setup()
   ss.begin(GPSBaud);     // Liaison serie GPS
   Wire2.begin();         // I2C Skytemp
 
-  pinMode(pinPluvioAnalog, INPUT_ANALOG);
+  //pinMode(pinPluvioAnalog, INPUT_ANALOG);
   pinMode(pinPluvioGPIO, INPUT_PULLDOWN);
 
   pinMode(wake_ccs,OUTPUT);
@@ -126,42 +126,9 @@ void setup()
   digitalWrite(alimentation_ESP,LOW);
   digitalWrite(alimentation_gps,LOW);//POWER GPS ON (PMOS)
   
-  digitalWrite(alimentation_lumi,HIGH);
-  if (capteurLum.begin()) 
-  {
-    safePrintSerialln("Found sensor");
-  } 
-  else 
-  {
-    safePrintSerialln("No TCS34725 found ... check your connections");
-    while (1);
-  }
-  digitalWrite(alimentation_lumi,LOW);
 
-  while(1)
-  {
 
-    digitalWrite(alimentation_lumi,HIGH);
-    capteurLum.enable();
-    delay(1000);
-    uint16_t r, g, b, c, colorTemp, lux;
 
-    capteurLum.getRawData(&r, &g, &b, &c);
-    // colorTemp = tcs.calculateColorTemperature(r, g, b);
-    colorTemp = capteurLum.calculateColorTemperature_dn40(r, g, b, c);
-    lux = capteurLum.calculateLux(r, g, b);
-
-    safePrintSerial("Color Temp: "); safePrintSerial2(colorTemp, DEC); safePrintSerial(" K - ");
-    safePrintSerial("Lux: "); safePrintSerial2(lux, DEC); safePrintSerial(" - ");
-    safePrintSerial("R: "); safePrintSerial2(r, DEC); safePrintSerial(" ");
-    safePrintSerial("G: "); safePrintSerial2(g, DEC); safePrintSerial(" ");
-    safePrintSerial("B: "); safePrintSerial2(b, DEC); safePrintSerial(" ");
-    safePrintSerial("C: "); safePrintSerial2(c, DEC); safePrintSerial(" ");
-    safePrintSerialln(" ");
-    digitalWrite(alimentation_lumi,LOW);
-    capteurLum.disable();
-    delay(3000);
-  }
   bool gps_ok = false;
   uint32_t timer = millis();
   while(!gps_ok)
@@ -221,6 +188,18 @@ void setup()
 
   safePrintSerialln("ClosedCube HDC1080 Arduino Test");
   hdc1080.begin(0x40);
+
+  digitalWrite(alimentation_lumi,HIGH);
+  if (capteurLum.begin()) 
+  {
+    safePrintSerialln("Found sensor");
+  } 
+  else 
+  {
+    safePrintSerialln("No TCS34725 found ... check your connections");
+    while (1);
+  }
+  digitalWrite(alimentation_lumi,LOW);
 
 
 }
@@ -304,6 +283,19 @@ void loop()
   }
   digitalWrite(wake_ccs, HIGH);
 
+  digitalWrite(alimentation_lumi,HIGH);
+  capteurLum.enable();
+  delay(1000);
+  uint16_t r, g, b, c, lux;
+
+  capteurLum.getRawData(&r, &g, &b, &c);
+  // colorTemp = tcs.calculateColorTemperature(r, g, b);
+  aenvoyer._msg.lux = capteurLum.calculateLux(r, g, b);
+
+  capteurLum.disable();
+  digitalWrite(alimentation_lumi,LOW);
+  
+
 
   digitalWrite(alimentation_gps,LOW); //Power on GPS
   smartDelay(2000);//DELAY + permet d'utiliser le GPS
@@ -348,16 +340,16 @@ void loop()
   // aenvoyer.updateCrc();
 
   
-  // digitalWrite(alimentation_ESP,HIGH);
-  // if(aenvoyer.safeSendX1())
-  // {
-  //   safePrintSerialln("Successfully sent");
-  // }
-  // else
-  // {
-  //   safePrintSerialln("failed to sent");
-  // }
-  // digitalWrite(alimentation_ESP,LOW);
+  digitalWrite(alimentation_ESP,HIGH);
+  if(aenvoyer.safeSendX1())
+  {
+    safePrintSerialln("Successfully sent");
+  }
+  else
+  {
+    safePrintSerialln("failed to sent");
+  }
+  digitalWrite(alimentation_ESP,LOW);
 
 
   delay(5000);
@@ -450,4 +442,6 @@ void printCapteurs()
   safePrintSerial(aenvoyer._msg.co2_ppm);
   safePrintSerial("ppm, TVOC: ");
   safePrintSerialln(aenvoyer._msg.tvoc_index);
+  safePrintSerial("Lux: "); 
+  safePrintSerialln(aenvoyer._msg.lux);
 }
