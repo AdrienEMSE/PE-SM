@@ -1,4 +1,22 @@
+// #include "Wire.h"
+// #include "STM32LowPower.h"
 
+// void setup() {
+//   pinMode(LED_BUILTIN, OUTPUT);
+//   LowPower.begin();
+//   Serial.begin(9600);
+// }
+
+// void loop() {
+//   Serial.println("HIGH");
+//   Serial.flush();
+//   digitalWrite(LED_BUILTIN, HIGH);
+//   LowPower.deepSleep(1000);
+//   Serial.println("LOW");
+//   Serial.flush();
+//   digitalWrite(LED_BUILTIN, LOW);
+//   LowPower.deepSleep(1000);
+// }
 
 /*----------INCLUDES----------*/
 
@@ -62,7 +80,7 @@ static const int alimentation_anemo = PE10;
 /*----------PARAMS----------*/
 
 float seuil_haut = 815.0; // pas de pluie
-float seuil_bas = 425.0;  // beaucoup de pluie
+float seuil_bas = 425.0;  // beassucoup de pluie
 
 static const uint32_t GPSBaud = 9600;    // BAUD GPS
 
@@ -95,7 +113,7 @@ msg_ESP_class aenvoyer(&Serial6);
 
 /*----------PROTOTYPES----------*/
 
-void smartDelay(unsigned long ms);
+//void smartDelay(unsigned long ms);
 void dateTimePrint(TinyGPSDate &d, TinyGPSTime &t);
 void printCapteurs();
 
@@ -151,7 +169,7 @@ void setup()
   }   
   */
   digitalWrite(alimentation_gps,HIGH); //POWER GPS OFF (PMOS)
-
+  ss.end(); //il faut end ss avant de passer en mode deepSleep sinon cela introduit des réveils intempestifs pour une raison inconnue
 
 
   safePrintSerialln("VEML6070 Test");
@@ -356,7 +374,7 @@ void dateTimePrint(TinyGPSDate &d, TinyGPSTime &t)
     safePrintSerial(toprint);
   }
 
-  smartDelay(0);
+  //smartDelay(0);
 }
 
 
