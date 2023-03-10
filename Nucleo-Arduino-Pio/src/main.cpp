@@ -419,7 +419,7 @@ void printCapteurs()
 }
 
 
-void SystemClock_Config(void)
+void SystemClock_Config(void) //NB si jamais il y a dres problèmes avec le mode deepSleep, commenter cette fonction pour que celle définie en WEAK ailleurs prévale (configuration par défaut)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
