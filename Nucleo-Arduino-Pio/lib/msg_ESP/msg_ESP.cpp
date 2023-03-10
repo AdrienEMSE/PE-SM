@@ -25,7 +25,9 @@ void msg_ESP_class::send_msg_sensor()
 {
   safePrintSerialln("sending msg_ESP to esp...");
   typeToSend = msg_type::sensor_msg;
-  Serial_ESP->write((uint8_t*)&typeToSend,sizeof(typeToSend));
+  uint8_t tosend = typeToSend;
+  Serial_ESP->write(tosend);
+  delay(10);
   Serial_ESP->write((uint8_t *)&_msg_sensor, sizeof(msg_ESP));
   safePrintSerialln("...msg_sent");
 }
@@ -34,7 +36,9 @@ void msg_ESP_class::send_msg_location()
 {
   safePrintSerialln("sending msg_ESP to esp...");
   typeToSend = msg_type::gps_msg;
-  Serial_ESP->write((uint8_t*)&typeToSend,sizeof(typeToSend));
+  uint8_t tosend = typeToSend;
+  Serial_ESP->write(tosend);
+  delay(10);
   Serial_ESP->write((uint8_t *)&_msg_location, sizeof(location_msg));
   safePrintSerialln("...msg_sent");
 }
