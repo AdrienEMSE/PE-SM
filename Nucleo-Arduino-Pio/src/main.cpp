@@ -115,7 +115,7 @@ msg_ESP_class aenvoyer(&Serial6);
 
 /*----------PROTOTYPES----------*/
 
-//void smartDelay(unsigned long ms);
+void smartDelay(unsigned long ms);
 void dateTimePrint(TinyGPSDate &d, TinyGPSTime &t);
 void printCapteurs();
 
@@ -163,6 +163,7 @@ void setup()
       safePrintSerialln("Le gps a atteint le satellite");
       aenvoyer._msg_location.lat =gps.location.lat();
       aenvoyer._msg_location.lng =gps.location.lng();
+      aenvoyer.updateCrc_gps();
       digitalWrite(alimentation_ESP,HIGH);
       if(aenvoyer.safeSendX1(msg_type::gps_msg))
       {
@@ -323,7 +324,7 @@ void loop()
 
   capteurLum.getRawData(&r, &g, &b, &c);
   // colorTemp = tcs.calculateColorTemperature(r, g, b);
-  aenvoyer._msg.lux = capteurLum.calculateLux(r, g, b);
+  aenvoyer._msg_sensor.lux = capteurLum.calculateLux(r, g, b);
 
   capteurLum.disable();
 
@@ -347,7 +348,7 @@ void loop()
 
 
 
-  aenvoyer.updateCrc();
+  aenvoyer.updateCrc_sensor();
 
   
   digitalWrite(alimentation_ESP,HIGH);
@@ -458,7 +459,7 @@ void printCapteurs()
   safePrintSerialln(aenvoyer._msg_sensor.tvoc_index);
   safePrintSerial("Lux: "); 
   safePrintSerialln(aenvoyer._msg_sensor.lux);
-  safePrintSerialln(aenvoyer._msg.tvoc_index);
+
 }
 
 
