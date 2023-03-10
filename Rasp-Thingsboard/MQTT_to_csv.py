@@ -9,7 +9,12 @@ def on_connect(client, userdata, flags, rc):
 def on_message(client, userdata, message):
     print("Received message " + str(message.payload))
     #clear_message = unpack('=H2BH2B6d5f2i?BH',message.payload)
-    libC.save_data(message.payload)
+    print(len(message.payload))
+    if len(message.payload) == 48:
+        libC.save_data(message.payload)
+    elif len(message.payload) == 24:
+        libC.save_location(message.payload)
+
     
 
 client = mqtt.Client()

@@ -7,12 +7,6 @@ extern "C" void save_data(msg_ESP &msg)
 	FILE * fp;
 	
 	fp = fopen("outdoor_station.csv","a");
-	
-	fprintf(fp,"%u,%u,%u,",msg.msg_gps.msg_time.hour,msg.msg_gps.msg_time.min,msg.msg_gps.msg_time.sec);//Time
-	
-	fprintf(fp,"%u,%d,%d,",msg.msg_gps.msg_date.j, msg.msg_gps.msg_date.m, msg.msg_gps.msg_date.a);//Date
-	
-	fprintf(fp,"%f,%f,",msg.msg_gps.msg_location.lat,msg.msg_gps.msg_location.lng);//Location
 
 	fprintf(fp,"%f,%f,",msg.temp_ambiant_celsius_sky,msg.temp_object_celsius_sky);//Sky
 	
@@ -32,13 +26,21 @@ extern "C" void save_data(msg_ESP &msg)
 	
 	fprintf(fp,"\n",msg.uv_index_level);//Return to line
 	
-	
-	
 	fclose(fp);
+	
 	printf("Writing done.\n");
 } 
 
-extern "C" void prompt()
+
+extern "C" void save_location(location_msg &msg)
 {
-	printf("It works.\n");
+	FILE * fp;
+	
+	fp = fopen("outdoor_station.csv","a");
+	
+	fprintf(fp,"%f,%f\n",msg.lat,msg.lng);//Location
+
+	fclose(fp);
+	
+	printf("Writing done.\n");
 } 
