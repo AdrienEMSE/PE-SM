@@ -166,11 +166,11 @@ void setup()
       digitalWrite(alimentation_ESP,HIGH);
       if(aenvoyer.safeSendX1(msg_type::gps_msg))
       {
-        safePrintSerialln("Successfully sent GPS");
+        safePrintSerialln("Successfully send GPS");
       }
       else
       {
-        safePrintSerialln("failed to sent GPS");
+        safePrintSerialln("failed to send GPS");
       }
       digitalWrite(alimentation_ESP,LOW);
     }
@@ -316,6 +316,17 @@ void loop()
   }
   digitalWrite(wake_ccs, HIGH);
 
+
+  capteurLum.enable();
+  delay(1000);
+  uint16_t r, g, b, c, lux;
+
+  capteurLum.getRawData(&r, &g, &b, &c);
+  // colorTemp = tcs.calculateColorTemperature(r, g, b);
+  aenvoyer._msg.lux = capteurLum.calculateLux(r, g, b);
+
+  capteurLum.disable();
+
 /*
   digitalWrite(alimentation_gps,HIGH); //Power on GPS
   smartDelay(2000);//DELAY + permet d'utiliser le GPS
@@ -346,7 +357,7 @@ void loop()
   }
   else
   {
-    safePrintSerialln("failed to sent");
+    safePrintSerialln("failed to send");
   }
   digitalWrite(alimentation_ESP,LOW);
 
