@@ -1,3 +1,5 @@
+
+
 /*----------INCLUDES----------*/
 
 
@@ -23,6 +25,9 @@
 #include "ClosedCube_HDC1080.h"
 
 #include "msg_ESP.h"
+
+#include "STM32LowPower.h"
+#include "STM32RTC.h"
 
 
 /*----------MACRO----------*/
@@ -82,6 +87,8 @@ Adafruit_CCS811 ccs;        // CO2, TOV,
 Adafruit_BMP280 bmp280;     // Temperature et Pression                // I2C
 ClosedCube_HDC1080 hdc1080; // Temperature et Humidité
 
+
+
 HardwareSerial Serial6(D0, D1); // Liaison série vers ESP
 TwoWire Wire2(PB11, PB10);
 msg_ESP_class aenvoyer(&Serial6);
@@ -97,7 +104,9 @@ void printCapteurs();
 void setup()
 {
 
+#ifdef DEBUG
   Serial.begin(9600);    // Liaison serie vers Ordinateur
+#endif
   Serial6.begin(115200); // Liaison serie ESP
   ss.begin(GPSBaud);     // Liaison serie GPS
   Wire2.begin();         // I2C Skytemp
@@ -122,18 +131,14 @@ void setup()
   digitalWrite(alimentation_pluvio,LOW);
   digitalWrite(alimentation_lumi,LOW);
   digitalWrite(alimentation_ESP,LOW);
-  digitalWrite(alimentation_gps,LOW);//POWER GPS ON (PMOS)
-  
-  
-
-  bool gps_ok = false;
+/*  digitalWrite(alimentation_gps,LOW);//POWER GPS ON (PMOS)
   uint32_t timer = millis();
-  while(!gps_ok)
+  while(true)
   {
-    smartDelay(1);
+    smartDelay(100);
     if(gps.date.day() != 0)
     {
-      gps_ok = true;
+      break;
       safePrintSerialln("Le gps a atteint le satellite");
     }
     if(millis() > timer + 10000)
@@ -144,9 +149,8 @@ void setup()
 
 
   }   
+  */
   digitalWrite(alimentation_gps,HIGH); //POWER GPS OFF (PMOS)
-
-
 
 
 
@@ -186,6 +190,7 @@ void setup()
   safePrintSerialln("ClosedCube HDC1080 Arduino Test");
   hdc1080.begin(0x40);
 
+  LowPower.begin();
 
 }
 
@@ -198,9 +203,7 @@ void loop()
 
   // attention fonctionnement de la librairie basé sur HAL_GetTick (parce que protocole de communication non conventionnel)
   // en particulier pour vérifier que 2s se sont écoulées depuis le dernier échantillonnage
-  // donc prudence si on désactive les ticks si on passe en mode économie d'énergie le microcontrôleur
 
-  // Get temperature event and print its value.
   digitalWrite(alimentation_dht,HIGH);
   sensors_event_t event;
   capteurTempHum.temperature().getEvent(&event);
@@ -212,7 +215,7 @@ void loop()
   {
     aenvoyer._msg.dht_temp_celsius = event.temperature;
   }
-  // Get humidity event and print its value.
+
   capteurTempHum.humidity().getEvent(&event);
   if (isnan(event.relative_humidity))
   {
@@ -268,10 +271,10 @@ void loop()
   }
   digitalWrite(wake_ccs, HIGH);
 
-
-  digitalWrite(alimentation_gps,LOW); //Power on GPS
+/*
+  digitalWrite(alimentation_gps,HIGH); //Power on GPS
   smartDelay(2000);//DELAY + permet d'utiliser le GPS
-  digitalWrite(alimentation_gps,HIGH);//Power off GPS
+  digitalWrite(alimentation_gps,LOW);   //Power off GPS
 
   aenvoyer._msg.msg_gps.msg_location.lat = gps.location.lat();
   aenvoyer._msg.msg_gps.msg_location.lng = gps.location.lng();
@@ -281,34 +284,11 @@ void loop()
   aenvoyer._msg.msg_gps.msg_time.hour = gps.time.hour();
   aenvoyer._msg.msg_gps.msg_time.min = gps.time.minute();
   aenvoyer._msg.msg_gps.msg_time.sec = gps.time.second();
-  safePrintSerialln();
+  safePrintSerialln();*/
   
 
   printCapteurs();
 
-
-  // aenvoyer._msg.uv_index_level = 1;
-  // aenvoyer._msg.tvoc_index = 1;
-  // aenvoyer._msg.temperature_celsius_hdc = 30.0;
-  // aenvoyer._msg.temperature_celsius_bmp = 30.0;
-  // aenvoyer._msg.temp_object_celsius_sky = 20.0;
-  // aenvoyer._msg.temp_ambiant_celsius_sky = 25.0;
-  // aenvoyer._msg.pression_Pa_bmp = 5.0;
-  // aenvoyer._msg.pluie_pourcentage = 0.3;
-  // aenvoyer._msg.pluie_gpio = 1;
-  // aenvoyer._msg.humidite_relative_hdc = 0.4;
-  // aenvoyer._msg.dht_temp_celsius = 30.0;
-  // aenvoyer._msg.dht_humidite_relative = 0.5;
-  // aenvoyer._msg.co2_ppm = 30;
-  // aenvoyer._msg.msg_gps.msg_date.a = 2033;
-  // aenvoyer._msg.msg_gps.msg_date.j = 7;
-  // aenvoyer._msg.msg_gps.msg_date.m = 4;
-  // aenvoyer._msg.msg_gps.msg_location.lat = 30.0;
-  // aenvoyer._msg.msg_gps.msg_location.lng = 40.0;
-  // aenvoyer._msg.msg_gps.msg_time.hour = 10;
-  // aenvoyer._msg.msg_gps.msg_time.min = 50;
-  // aenvoyer._msg.msg_gps.msg_time.sec = 35;
-  // aenvoyer._msg.crc = 0xffff;
   // aenvoyer.updateCrc();
 
   
@@ -319,12 +299,16 @@ void loop()
   // }
   // else
   // {
-  //   safePrintSerialln("failed to sent");
+  //   safePrintSerialln("failed to send");
   // }
   // digitalWrite(alimentation_ESP,LOW);
 
+#ifdef DEBUG
+  Serial.flush(); 
+#endif
+  Serial6.flush(); //attendre que tout soit transmis par UART avant de passer en mode STOP. Sans cette ligne, le microcontrôleur passe en STOP avant d'avoir tout envoyé ce qui conduit à un message corrompu en partie.
 
-  delay(5000);
+  LowPower.deepSleep(10000); //deepSleep est en fait le mode STOP, avec réveil piloté par RTC, configurée en low power par la librairie
 }
 
 /*---------------------Fonctions utilitaires----------------------*/
@@ -414,4 +398,47 @@ void printCapteurs()
   safePrintSerial(aenvoyer._msg.co2_ppm);
   safePrintSerial("ppm, TVOC: ");
   safePrintSerialln(aenvoyer._msg.tvoc_index);
+}
+
+
+void SystemClock_Config(void)
+{
+  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+
+  /** Configure the main internal regulator output voltage
+  */
+  __HAL_RCC_PWR_CLK_ENABLE();
+  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE3);
+  /** Initializes the RCC Oscillators according to the specified parameters
+  * in the RCC_OscInitTypeDef structure.
+  */
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+  RCC_OscInitStruct.LSIState = RCC_LSI_ON;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
+  RCC_OscInitStruct.PLL.PLLM = 16;
+  RCC_OscInitStruct.PLL.PLLN = 216;
+  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
+  RCC_OscInitStruct.PLL.PLLQ = 2;
+  RCC_OscInitStruct.PLL.PLLR = 2;
+  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /** Initializes the CPU, AHB and APB buses clocks
+  */
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV8;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
+
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
+  {
+    Error_Handler();
+  }
 }
