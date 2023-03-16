@@ -8,11 +8,11 @@
 // }
 
 // void loop() {
-//   Serial.println("HIGH");
+//   safePrintSerialln("HIGH");
 //   Serial.flush();
 //   digitalWrite(LED_BUILTIN, HIGH);
 //   LowPower.deepSleep(1000);
-//   Serial.println("LOW");
+//   safePrintSerialln("LOW");
 //   Serial.flush();
 //   digitalWrite(LED_BUILTIN, LOW);
 //   LowPower.deepSleep(1000);
@@ -22,6 +22,7 @@
 
 
 #include <Arduino.h>
+#include <assert.h>
 
 #include <Wire.h>
 #include <SPI.h>
@@ -48,6 +49,11 @@
 #include "STM32LowPower.h"
 #include "STM32RTC.h"
 
+#include <WiFiEspClient.h>
+#include <WiFiEsp.h>
+#include <WiFiEspUdp.h>
+#include <ThingsBoard.h>
+
 
 /*----------MACRO----------*/
 
@@ -57,6 +63,9 @@
 #define DHTTYPE DHT22 // DHT 22 (AM2302)
 // #define DHTTYPE    DHT21     // DHT 21 (AM2301)
 
+#define WIFI_AP "POCO_F3"
+#define WIFI_PASSWORD "Sapristi"
+#define TOKEN "CZKwRlNJJBqjGpNZ1kL4"
 
 
 /*----------PINS----------*/
@@ -84,6 +93,9 @@ float seuil_haut = 815.0; // pas de pluie
 float seuil_bas = 425.0;  // beassucoup de pluie
 
 static const uint32_t GPSBaud = 9600;    // BAUD GPS
+
+char thingsboardServer[] = "thingsboard.cloud";
+int status = WL_IDLE_STATUS;
 
 /*----------VAR----------*/
 
@@ -113,11 +125,19 @@ HardwareSerial Serial6(D0, D1); // Liaison série vers ESP
 TwoWire Wire2(PB11, PB10);
 msg_ESP_class aenvoyer(&Serial6);
 
+
+// Connection WiFi à travers l'Esp
+WiFiEspClient espClient;
+ThingsBoard tb(espClient);
+
 /*----------PROTOTYPES----------*/
 
 void smartDelay(unsigned long ms);
 void dateTimePrint(TinyGPSDate &d, TinyGPSTime &t);
 void printCapteurs();
+
+void reconnect();
+void InitWiFi();
 
 /*----------CODE----------*/
 
@@ -127,9 +147,10 @@ void setup()
 #ifdef DEBUG
   Serial.begin(9600);    // Liaison serie vers Ordinateur
 #endif
-  Serial6.begin(115200); // Liaison serie ESP
+  Serial6.begin(9600); // Liaison serie ESP
   ss.begin(GPSBaud);     // Liaison serie GPS
   Wire2.begin();         // I2C Skytemp
+
 
   pinMode(pinPluvioAnalog, INPUT_ANALOG);
   pinMode(pinPluvioGPIO, INPUT_PULLDOWN);
@@ -152,37 +173,46 @@ void setup()
   digitalWrite(alimentation_lumi,LOW);
   digitalWrite(alimentation_ESP,LOW);
   
-  digitalWrite(alimentation_gps,LOW);//POWER GPS ON (PMOS)
-  uint32_t timer = millis();
-  while(true)
-  {
-    smartDelay(100);
-    if(gps.date.day() != 0)
-    {
-      break;
-      safePrintSerialln("Le gps a atteint le satellite");
-      aenvoyer._msg_location.lat =gps.location.lat();
-      aenvoyer._msg_location.lng =gps.location.lng();
-      aenvoyer.updateCrc_gps();
-      digitalWrite(alimentation_ESP,HIGH);
-      if(aenvoyer.safeSendX1(msg_type::gps_msg))
-      {
-        safePrintSerialln("Successfully send GPS");
-      }
-      else
-      {
-        safePrintSerialln("failed to send GPS");
-      }
-      digitalWrite(alimentation_ESP,LOW);
-    }
-    if(millis() > timer + 10000)
-    {
-      timer = millis();
-      safePrintSerialln("Le gps n'a toujours pas atteint le satellite...");
-    }
+  
+  // digitalWrite(alimentation_gps,LOW);//POWER GPS ON (PMOS)
+  // uint32_t timer = millis();
+  // while(true)
+  // {
+  //   smartDelay(100);
+  //   if(gps.date.day() != 0)
+  //   {
+  //     break;
+  //     safePrintSerialln("Le gps a atteint le satellite");
+  //     aenvoyer._msg_location.lat =gps.location.lat();
+  //     aenvoyer._msg_location.lng =gps.location.lng();
+  //     aenvoyer.updateCrc_gps();
+  //     digitalWrite(alimentation_ESP,HIGH);
+  //     /*if(aenvoyer.safeSendX1(msg_type::gps_msg))
+  //     {
+  //       safePrintSerialln("Successfully send GPS");
+  //     }
+  //     else
+  //     {
+  //       safePrintSerialln("failed to send GPS");
+  //     }*/
+
+  //     //Protocole ThingsBoard
+  //     InitWiFi(); //Initialisation WiFi
+  //     reconnect();
+  //     if ( tb.connected() ) {
+  //       tb.sendTelemetryFloat("lattitude", aenvoyer._msg_location.lat);
+  //       tb.sendTelemetryFloat("longitude", aenvoyer._msg_location.lng);
+  //     }
+  //     digitalWrite(alimentation_ESP,LOW);
+  //   }
+  //   if(millis() > timer + 10000)
+  //   {
+  //     timer = millis();
+  //     safePrintSerialln("Le gps n'a toujours pas atteint le satellite...");
+  //   }
 
 
-  }   
+  // }   
 
   digitalWrite(alimentation_gps,HIGH); //POWER GPS OFF (PMOS)
   ss.end(); //il faut end ss avant de passer en mode deepSleep sinon cela introduit des réveils intempestifs pour une raison inconnue
@@ -227,7 +257,7 @@ void setup()
   digitalWrite(alimentation_lumi,HIGH);
   if (capteurLum.begin()) 
   {
-    safePrintSerialln("Found sensor");
+    safePrintSerialln("Found luminosity sensor");
   } 
   else 
   {
@@ -348,11 +378,11 @@ void loop()
 
 
 
-  aenvoyer.updateCrc_sensor();
+  //aenvoyer.updateCrc_sensor();
 
   
   digitalWrite(alimentation_ESP,HIGH);
-  if(aenvoyer.safeSendX1(msg_type::sensor_msg))
+  /*if(aenvoyer.safeSendX1(msg_type::sensor_msg))
   {
     safePrintSerialln("Successfully sent");
   }
@@ -360,13 +390,40 @@ void loop()
   {
     safePrintSerialln("failed to send");
   }
-  digitalWrite(alimentation_ESP,LOW);
+  digitalWrite(alimentation_ESP,LOW);*/
+
+  InitWiFi();
+
+  reconnect();
+
+  if ( tb.connected() )
+  {
+    // ATTENTION: pour une raison inconnue, si la chaîne de caractères est trop longue, l'envoi échoue. Possiblement quelque chose à voir avec une vérification de taille mémoire qui échoue quelque part dans les méandres de la librairie ThingsBoard. Garder des noms courts.
+
+    tb.sendTelemetryFloat("temp_amb_sky", aenvoyer._msg_sensor.temp_ambiant_celsius_sky);
+    tb.sendTelemetryFloat("temp_obj_sky", aenvoyer._msg_sensor.temp_object_celsius_sky);
+    tb.sendTelemetryFloat("humidite_hdc", aenvoyer._msg_sensor.humidite_relative_hdc);
+    tb.sendTelemetryFloat("temp_hdc", aenvoyer._msg_sensor.temperature_celsius_hdc);
+    tb.sendTelemetryFloat("humidite_dht", aenvoyer._msg_sensor.dht_humidite_relative);
+    tb.sendTelemetryFloat("temp_dht", aenvoyer._msg_sensor.dht_temp_celsius);
+    tb.sendTelemetryFloat("pluie_pourcent", aenvoyer._msg_sensor.pluie_pourcentage);
+    tb.sendTelemetryFloat("pression_bmp", aenvoyer._msg_sensor.pression_Pa_bmp);
+    tb.sendTelemetryFloat("temp_bmp", aenvoyer._msg_sensor.temperature_celsius_bmp);
+    
+    tb.sendTelemetryInt("lux", aenvoyer._msg_sensor.lux);
+    tb.sendTelemetryInt("uv_level", aenvoyer._msg_sensor.uv_index_level);
+    tb.sendTelemetryInt("co2_ppm", aenvoyer._msg_sensor.co2_ppm);
+    tb.sendTelemetryInt("tvoc_index", aenvoyer._msg_sensor.tvoc_index);
+    tb.sendTelemetryBool("pluie_gpio", aenvoyer._msg_sensor.pluie_gpio);
+  }
 
 #ifdef DEBUG
   Serial.flush(); 
 #endif
   Serial6.flush(); //attendre que tout soit transmis par UART avant de passer en mode STOP. Sans cette ligne, le microcontrôleur passe en STOP avant d'avoir tout envoyé ce qui conduit à un message corrompu en partie.
 
+  digitalWrite(alimentation_ESP,LOW);
+  
   LowPower.deepSleep(10000); //deepSleep est en fait le mode STOP, avec réveil piloté par RTC, configurée en low power par la librairie
 }
 
@@ -502,5 +559,46 @@ void SystemClock_Config(void) //NB si jamais il y a dres problèmes avec le mode
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
   {
     Error_Handler();
+  }
+}
+
+void InitWiFi()
+{
+  // initialize ESP module
+  WiFi.init(&Serial6);
+  // check for the presence of the shield
+  if (WiFi.status() == WL_NO_SHIELD) {
+    safePrintSerialln("WiFi shield not present");
+    // don't continue
+    while (true);
+  }
+
+  safePrintSerialln("Connecting to AP ...");
+  // attempt to connect to WiFi network
+  while ( status != WL_CONNECTED) {
+    safePrintSerial("Attempting to connect to WPA SSID: ");
+    safePrintSerialln(WIFI_AP);
+    // Connect to WPA/WPA2 network
+    status = WiFi.begin(WIFI_AP, WIFI_PASSWORD);
+    delay(500);
+  }
+  safePrintSerialln("Connected to AP");
+}
+
+void reconnect() {
+  // Loop until we're reconnected
+  int attempts = 0;
+  while (!tb.connected() && attempts < 5) {
+    safePrintSerial("Connecting to ThingsBoard node ...");
+    // Attempt to connect (clientId, username, password)
+    if ( tb.connect(thingsboardServer, TOKEN) ) {
+      safePrintSerialln( "[DONE]" );
+    } else {
+      safePrintSerial( "[FAILED]" );
+      safePrintSerialln( " : retrying in 5 seconds" );
+      // Wait 5 seconds before retrying
+      delay( 5000 );
+      attempts++;
+    }
   }
 }
