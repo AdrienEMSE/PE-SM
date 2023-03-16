@@ -160,7 +160,7 @@ void setup()
   pinMode(wake_ccs,OUTPUT);
   digitalWrite(wake_ccs,HIGH);
 
-  pinMode(pin_big_blue_button,INPUT_PULLUP);
+  pinMode(pin_big_blue_button,INPUT_PULLDOWN);
   
   pinMode(alimentation_anemo,OUTPUT);
   pinMode(alimentation_dht,OUTPUT);
@@ -206,7 +206,7 @@ void setup()
       timer = millis();
       safePrintSerialln("Le gps n'a toujours pas atteint le satellite...");
     }
-    if( digitalRead(pin_big_blue_button)==LOW) // Si l'utilisateur appuie sur le bouton bleu, on skip le gps à l'init du programme
+    if( digitalRead(pin_big_blue_button)==HIGH) // Si l'utilisateur appuie sur le bouton bleu, on skip le gps à l'init du programme
     {
       break;
     }
