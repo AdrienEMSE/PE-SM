@@ -48,7 +48,8 @@
 
 #include "msg_ESP.h" //classe réalisée par l'équipe PE pour regrouper les données à envoyer au serveur
 
-#include "STM32LowPower.h" //passer en mode deepSleep
+#include "STM32LowPower.h"
+//#include "STM32LowPower.h" //passer en mode deepSleep
 #include "STM32RTC.h" //la RTC permet de sortir du mode deepSleep
 
 #include <WiFiEspClient.h> //communication avec l'ESP pour le wi-fi
@@ -106,6 +107,7 @@ int status = WL_IDLE_STATUS;
 uint16_t r, g, b, c, lux; //capteur de luminosité
 // String receive_string;
 // String send_string;
+bool thunder_detected = false;
 
 /*----------STRUCT ET CLASSES----------*/
 
@@ -138,6 +140,7 @@ ThingsBoard tb(espClient);
 
 /*----------PROTOTYPES----------*/
 
+void callback_foudre();
 void smartDelay(unsigned long ms); //machine d'état GPS
 void dateTimePrint(TinyGPSDate &d, TinyGPSTime &t);
 void printCapteurs();
@@ -170,6 +173,8 @@ void setup()
   pinMode(alimentation_lumi,OUTPUT);
   pinMode(alimentation_ESP,OUTPUT);
   pinMode(alimentation_gps,OUTPUT);
+
+  pinMode(capteur_de_foudre,INPUT_FLOATING);
   
   
   digitalWrite(alimentation_anemo,LOW);
@@ -282,7 +287,7 @@ void setup()
   digitalWrite(alimentation_lumi,LOW);
 
   LowPower.begin(); //nécessaire pour utiliser le mode deepSleep par la suite
-
+  LowPower.attachInterruptWakeup(capteur_de_foudre,callback_foudre,RISING,DEEP_SLEEP_MODE);
 }
 
 void loop()
@@ -423,6 +428,8 @@ void loop()
     tb.sendTelemetryInt("co2_ppm", aenvoyer._msg_sensor.co2_ppm);
     tb.sendTelemetryInt("tvoc_index", aenvoyer._msg_sensor.tvoc_index);
     tb.sendTelemetryBool("pluie_gpio", aenvoyer._msg_sensor.pluie_gpio);
+    tb.sendTelemetryBool("thunder",thunder_detected);
+    thunder_detected = false;
   }
 
 #ifdef DEBUG
@@ -579,7 +586,7 @@ void InitWiFi()
     safePrintSerialln("WiFi shield not present");
     // don't continue
     while (true){
-      deepSleep();
+      LowPower.deepSleep(0);
     } //si l'ESP ne répond plus, c'est un problème hardware, la station ne fonctionne plus, ça ne sert à rien de continuer
   }
 
@@ -620,4 +627,9 @@ void reconnect() {
       attempts++;
     }
   }
+}
+
+void callback_foudre()
+{
+  thunder_detected = true;
 }
