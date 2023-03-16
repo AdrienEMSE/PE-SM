@@ -24,44 +24,45 @@
 #include <Arduino.h>
 #include <assert.h>
 
-#include <Wire.h>
+#include <Wire.h> //I2C
 #include <SPI.h>
 
 #include <TinyGPSPlus.h> // Lib GPS
 
 #include <SoftwareSerial.h>
 
-#include "Adafruit_VEML6070.h"
+#include "Adafruit_VEML6070.h" //Lib capteur UV
 #include <Adafruit_Sensor.h>
 
-#include <DHT.h> // LIB Température Humidité
+#include <DHT.h> // Lib Température Humidité
 #include <DHT_U.h>
 
-#include <Adafruit_MLX90614.h>
+#include <Adafruit_MLX90614.h> //Lib Skytemp
+
+//les trois suivants sont sur le même circuit
 #include <Adafruit_CCS811.h> // include library for CCS811 - Sensor from martin-pennings https://github.com/maarten-pennings/CCS811
 #include <Adafruit_BMP280.h> // include main library for BMP280 - Sensor
+#include "ClosedCube_HDC1080.h" // pour HDC1080
+
 #include "Adafruit_TCS34725.h" // capteur de luminosite
 
-#include "ClosedCube_HDC1080.h"
-
-#include "msg_ESP.h"
+#include "msg_ESP.h" //classe réalisée par l'équipe PE pour regrouper les données à envoyer au serveur
 
 #include "STM32LowPower.h"
-#include "STM32RTC.h"
+//#include "STM32LowPower.h" //passer en mode deepSleep
+#include "STM32RTC.h" //la RTC permet de sortir du mode deepSleep
 
-#include <WiFiEspClient.h>
+#include <WiFiEspClient.h> //communication avec l'ESP pour le wi-fi
 #include <WiFiEsp.h>
 #include <WiFiEspUdp.h>
-#include <ThingsBoard.h>
+#include <ThingsBoard.h> //support Thingsboard
 
 
 /*----------MACRO----------*/
+//NB: #define DEBUG à activer/désactiver dans debug.h et msg_ESP.h pour activer/désactiver la sortie d'informations utiles sur Serial (UART de debug)
+//TODO FIX
 
-
-// Uncomment the type of sensor in use:
-// #define DHTTYPE    DHT11     // DHT 11
 #define DHTTYPE DHT22 // DHT 22 (AM2302)
-// #define DHTTYPE    DHT21     // DHT 21 (AM2301)
 
 #define WIFI_AP "POCO_F3"
 #define WIFI_PASSWORD "Sapristi"
@@ -71,14 +72,15 @@
 /*----------PINS----------*/
 
 
-static const uint32_t pinPluvioAnalog = A4;
-static const uint32_t pinPluvioGPIO = D2;
+static const uint32_t pinPluvioAnalog = A4; //valeur analogique proportionnelle à la quantité de pluie
+static const uint32_t pinPluvioGPIO = D2; //booléen indiquant la présence de pluie ou nom en fonction d'un seuil paramétré par potentiomètre
 static const int RXPin = D4, TXPin = D7; // PIN Liaison série GPS
-static const int wake_ccs = D5;
-static const int dht_pin = D3; // Digital pin connected to the DHT sensor
+static const int wake_ccs = D5; //pour piloter le passage du CCS en mode économie d'énergie
+static const int dht_pin = D3; //pour communiquer avec le DHT selon un protocole non-standard
 static const int anemo_phase_1 = A1, anemo_phase_2 = A2;
 static const int capteur_de_foudre = A3;
 
+//tous les pins suivants servent à couper l'alimentation aux composants lorsqu'ils ne sont pas utilisés
 static const int pin_big_blue_button = USER_BTN;
 
 static const int alimentation_gps = D8;
@@ -91,53 +93,61 @@ static const int alimentation_anemo = PE10;
 
 /*----------PARAMS----------*/
 
-float seuil_haut = 815.0; // pas de pluie
-float seuil_bas = 425.0;  // beassucoup de pluie
+//ces deux paramètres sont utilisés avec le pluviomètre
+const float seuil_haut = 815.0; // pas de pluie
+const float seuil_bas = 425.0;  // beaucoup de pluie
 
 static const uint32_t GPSBaud = 9600;    // BAUD GPS
 
+
+//ce qui suit est utilisé avec l'ESP
 char thingsboardServer[] = "thingsboard.cloud";
 int status = WL_IDLE_STATUS;
 
 /*----------VAR----------*/
 
-  // String receive_string;
-  // String send_string;
+uint16_t r, g, b, c, lux; //capteur de luminosité
+// String receive_string;
+// String send_string;
+bool thunder_detected = false;
 
 /*----------STRUCT ET CLASSES----------*/
 
-TinyGPSPlus gps;                 // GPS
+TinyGPSPlus gps;                 // GPS (latitude, longitude)
 SoftwareSerial ss(RXPin, TXPin); // Liaison série vers GPS
 
-DHT_Unified capteurTempHum(dht_pin, DHTTYPE);
+DHT_Unified capteurTempHum(dht_pin, DHTTYPE); //DHT (Température, humidité)
 
-Adafruit_TCS34725 capteurLum = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_614MS, TCS34725_GAIN_1X);
+Adafruit_TCS34725 capteurLum = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_614MS, TCS34725_GAIN_1X); //capteur luminosité
 
 Adafruit_VEML6070 capteurUV = Adafruit_VEML6070();       // une résistance de RSET=270kOhms est soudée sur le capteur
-Adafruit_MLX90614 capteurTempCiel = Adafruit_MLX90614(); // par défaut addr=0x5A
+
+Adafruit_MLX90614 capteurTempCiel = Adafruit_MLX90614(); // par défaut addr=0x5A, nous l'avons changée à 0x69
 
 // Capteur qualité de l'air :
-Adafruit_CCS811 ccs;        // CO2, TOV,
-Adafruit_BMP280 bmp280;     // Temperature et Pression                // I2C
+Adafruit_CCS811 ccs;        // CO2, TOV
+Adafruit_BMP280 bmp280;     // Temperature et Pression
 ClosedCube_HDC1080 hdc1080; // Temperature et Humidité
 
 
 
 HardwareSerial Serial6(D0, D1); // Liaison série vers ESP
-TwoWire Wire2(PB11, PB10);
-msg_ESP_class aenvoyer(&Serial6);
+TwoWire Wire2(PB11, PB10);  //le MLX90614 est sur sa propre ligne I2C car il entrait en conflit avec les autres capteurs
+msg_ESP_class aenvoyer(&Serial6); //classe regroupant les données récupérées sur les capteurs
 
 
-// Connection WiFi à travers l'Esp
+// Connection WiFi avec l'Esp
 WiFiEspClient espClient;
 ThingsBoard tb(espClient);
 
 /*----------PROTOTYPES----------*/
 
-void delayGPS(unsigned long ms); //Permet de faire un delay, tout en faisant l'acquisition des données GPS
-void dateTimePrint(TinyGPSDate &d, TinyGPSTime &t); // Fonction d'affichage GPS
-void printCapteurs(); // Fonction d'affichage des capteurs
+void callback_foudre();
+void smartDelay(unsigned long ms); //machine d'état GPS
+void dateTimePrint(TinyGPSDate &d, TinyGPSTime &t);
+void printCapteurs();
 
+//machine d'état ESP
 void reconnect();
 void InitWiFi();
 
@@ -146,13 +156,12 @@ void InitWiFi();
 void setup()
 {
 
-#ifdef DEBUG
-  Serial.begin(9600);    // Liaison serie vers Ordinateur
+#ifdef DEBUG //ne pas oublier de bien choisir le #define DEBUG pour avoir accès ou non à des informations via l'UART du ST-LINK!
+  Serial.begin(9600);    // Liaison série vers ordinateur
 #endif
   Serial6.begin(9600); // Liaison serie ESP
   ss.begin(GPSBaud);     // Liaison serie GPS
   Wire2.begin();         // I2C Skytemp
-
 
   pinMode(pinPluvioAnalog, INPUT_ANALOG);
   pinMode(pinPluvioGPIO, INPUT_PULLDOWN);
@@ -168,6 +177,8 @@ void setup()
   pinMode(alimentation_lumi,OUTPUT);
   pinMode(alimentation_ESP,OUTPUT);
   pinMode(alimentation_gps,OUTPUT);
+
+  pinMode(capteur_de_foudre,INPUT_FLOATING);
   
   
   digitalWrite(alimentation_anemo,LOW);
@@ -214,24 +225,29 @@ void setup()
   }   
 
   digitalWrite(alimentation_gps,HIGH); //POWER GPS OFF (PMOS)
-  ss.end(); //il faut end ss avant de passer en mode deepSleep sinon cela introduit des réveils intempestifs pour une raison inconnue
+  ss.end(); //il faut end ss avant de passer en mode deepSleep sinon cela introduit des réveils intempestifs car l'UART peut déranger le MCU en mode STOP
 
 
+//il n'y a pas besoin d'alimenter le VEML6070 et le DHT pour initialiser la communication
   safePrintSerialln("VEML6070 Test");
   capteurUV.begin(VEML6070_1_T);
+  capteurUV.sleep(true);//le capteur UV est toujours alimenté et passe en low-power par commande I2C
 
   safePrintSerialln(F("DHTxx Unified Sensor Example"));
   capteurTempHum.begin();
 
+
+//par contre la librairie vérifie la présence du MLX90614 donc il faut l'alimenter pour qu'il réponde
   digitalWrite(alimentation_skytemp,HIGH);
   safePrintSerialln("Adafruit MLX90614 Emissivity Setter.\n");
-  if (!capteurTempCiel.begin(0x69, &Wire2)) // il faut re-init si on coupe l'alimentation au capteur (en premiere approche)
+  if (!capteurTempCiel.begin(0x69, &Wire2)) // il faut re-init si on coupe l'alimentation au capteur
   {
     safePrintSerialln("Error connecting to MLX sensor. Check wiring.");
     while (1);
   }
   digitalWrite(alimentation_skytemp,LOW);
 
+//idem pour le CCS, sauf que lui est toujours alimenté, on vient lui indiquer s'il faut communiquer par I2C avec le pin WAKE
   digitalWrite(wake_ccs, LOW);
   safePrintSerialln("CCS811 test"); /* --- SETUP CCS811 on 0x5A ------ */
   if (!ccs.begin(0x5B))
@@ -240,9 +256,10 @@ void setup()
     while (1);
   }
   while (!ccs.available());
-  ccs.setDriveMode(CCS811_DRIVE_MODE_60SEC);
+  ccs.setDriveMode(CCS811_DRIVE_MODE_60SEC); //mode le plus économe en énergie
   digitalWrite(wake_ccs, HIGH);
 
+//le bmp280 est sur la même carte que le CCS, et est toujours alimenté, parce que le CCS doit l'être
   safePrintSerialln("BMP280 test"); /* --- SETUP BMP on 0x76 ------ */
   if (!bmp280.begin(0x76))
   {
@@ -250,9 +267,12 @@ void setup()
     while (true);
   }
 
+//idem pour le HDC1080
   safePrintSerialln("ClosedCube HDC1080 Arduino Test");
   hdc1080.begin(0x40);
 
+
+//même commentaire pour le capteur de luminosité que pour le MLX90614
   digitalWrite(alimentation_lumi,HIGH);
   if (capteurLum.begin()) 
   {
@@ -265,20 +285,23 @@ void setup()
   }
   digitalWrite(alimentation_lumi,LOW);
 
-  LowPower.begin();
-
+  LowPower.begin(); //nécessaire pour utiliser le mode deepSleep par la suite
+  LowPower.attachInterruptWakeup(capteur_de_foudre,callback_foudre,RISING,DEEP_SLEEP_MODE);
 }
 
 void loop()
 {
+//NB: la communication avec un capteur doit toujours être précédée de son alimentation (pin d'alimentation) ou de son réveil du mode low-power
+//et suivie de la coupure de son alimentation (ou du retour dans son mode low-power)
 
-  capteurUV.sleep(false);                       // pas besoin de réinitialiser
+//NB:pour interpréter les données, et comprendre plus en détail les modes low-power le cas échéant, se rapporter aux fiches techniques des composants
+
+  capteurUV.sleep(false);                       // pas besoin de réinitialiser la bibliothèque lorsque l'on sort du mode low-power
   aenvoyer._msg_sensor.uv_index_level = capteurUV.readUV(); // pour interpréter: https://www.vishay.com/docs/84310/designingveml6070.pdf page 5
   capteurUV.sleep(true);                        // diminue la conso à 1 microA
 
-  // attention fonctionnement de la librairie basé sur HAL_GetTick (parce que protocole de communication non conventionnel)
-  // en particulier pour vérifier que 2s se sont écoulées depuis le dernier échantillonnage
 
+//NB: protocole de communication du DHT se base sur HAL_GetTick()
   digitalWrite(alimentation_dht,HIGH);
   sensors_event_t event;
   capteurTempHum.temperature().getEvent(&event);
@@ -341,54 +364,52 @@ void loop()
     else
     {
       safePrintSerialln("ERROR air quality CCS!");
-      while (1);
     }
   }
   digitalWrite(wake_ccs, HIGH);
 
 
+
+
   capteurLum.enable();
-  delay(1000);
-  uint16_t r, g, b, c, lux;
-
   capteurLum.getRawData(&r, &g, &b, &c);
-  // colorTemp = tcs.calculateColorTemperature(r, g, b);
   aenvoyer._msg_sensor.lux = capteurLum.calculateLux(r, g, b);
-
   capteurLum.disable();
 
 
-  printCapteurs();
+  printCapteurs(); //n'impriment rien si pas en mode #define DEBUG
 
 
   
   digitalWrite(alimentation_ESP,HIGH);
 
 
-  InitWiFi();
+  // InitWiFi();
 
-  reconnect();
+  // reconnect();
 
-  if ( tb.connected() )
-  {
-    // ATTENTION: pour une raison inconnue, si la chaîne de caractères est trop longue, l'envoi échoue. Possiblement quelque chose à voir avec une vérification de taille mémoire qui échoue quelque part dans les méandres de la librairie ThingsBoard. Garder des noms courts.
+  // if ( tb.connected() ) //on n'envoie des données que si le serveur est accessible
+  // {
+  //   // ATTENTION: pour une raison inconnue, si la chaîne de caractères est trop longue, l'envoi échoue. Possiblement quelque chose à voir avec une vérification de taille mémoire qui échoue quelque part dans les méandres de la librairie ThingsBoard. Garder des noms courts.
 
-    tb.sendTelemetryFloat("temp_amb_sky", aenvoyer._msg_sensor.temp_ambiant_celsius_sky);
-    tb.sendTelemetryFloat("temp_obj_sky", aenvoyer._msg_sensor.temp_object_celsius_sky);
-    tb.sendTelemetryFloat("humidite_hdc", aenvoyer._msg_sensor.humidite_relative_hdc);
-    tb.sendTelemetryFloat("temp_hdc", aenvoyer._msg_sensor.temperature_celsius_hdc);
-    tb.sendTelemetryFloat("humidite_dht", aenvoyer._msg_sensor.dht_humidite_relative);
-    tb.sendTelemetryFloat("temp_dht", aenvoyer._msg_sensor.dht_temp_celsius);
-    tb.sendTelemetryFloat("pluie_pourcent", aenvoyer._msg_sensor.pluie_pourcentage);
-    tb.sendTelemetryFloat("pression_bmp", aenvoyer._msg_sensor.pression_Pa_bmp);
-    tb.sendTelemetryFloat("temp_bmp", aenvoyer._msg_sensor.temperature_celsius_bmp);
+  //   tb.sendTelemetryFloat("temp_amb_sky", aenvoyer._msg_sensor.temp_ambiant_celsius_sky);
+  //   tb.sendTelemetryFloat("temp_obj_sky", aenvoyer._msg_sensor.temp_object_celsius_sky);
+  //   tb.sendTelemetryFloat("humidite_hdc", aenvoyer._msg_sensor.humidite_relative_hdc);
+  //   tb.sendTelemetryFloat("temp_hdc", aenvoyer._msg_sensor.temperature_celsius_hdc);
+  //   tb.sendTelemetryFloat("humidite_dht", aenvoyer._msg_sensor.dht_humidite_relative);
+  //   tb.sendTelemetryFloat("temp_dht", aenvoyer._msg_sensor.dht_temp_celsius);
+  //   tb.sendTelemetryFloat("pluie_pourcent", aenvoyer._msg_sensor.pluie_pourcentage);
+  //   tb.sendTelemetryFloat("pression_bmp", aenvoyer._msg_sensor.pression_Pa_bmp);
+  //   tb.sendTelemetryFloat("temp_bmp", aenvoyer._msg_sensor.temperature_celsius_bmp);
     
-    tb.sendTelemetryInt("lux", aenvoyer._msg_sensor.lux);
-    tb.sendTelemetryInt("uv_level", aenvoyer._msg_sensor.uv_index_level);
-    tb.sendTelemetryInt("co2_ppm", aenvoyer._msg_sensor.co2_ppm);
-    tb.sendTelemetryInt("tvoc_index", aenvoyer._msg_sensor.tvoc_index);
-    tb.sendTelemetryBool("pluie_gpio", aenvoyer._msg_sensor.pluie_gpio);
-  }
+  //   tb.sendTelemetryInt("lux", aenvoyer._msg_sensor.lux);
+  //   tb.sendTelemetryInt("uv_level", aenvoyer._msg_sensor.uv_index_level);
+  //   tb.sendTelemetryInt("co2_ppm", aenvoyer._msg_sensor.co2_ppm);
+  //   tb.sendTelemetryInt("tvoc_index", aenvoyer._msg_sensor.tvoc_index);
+  //   tb.sendTelemetryBool("pluie_gpio", aenvoyer._msg_sensor.pluie_gpio);
+  //   tb.sendTelemetryBool("thunder",thunder_detected);
+  //   thunder_detected = false;
+  // }
 
 #ifdef DEBUG
   Serial.flush(); 
@@ -397,6 +418,8 @@ void loop()
 
   digitalWrite(alimentation_ESP,LOW);
   
+
+  //indication de la durée à passer en STOP en ms
   LowPower.deepSleep(10000); //deepSleep est en fait le mode STOP, avec réveil piloté par RTC, configurée en low power par la librairie
 }
 
@@ -444,13 +467,11 @@ void dateTimePrint(TinyGPSDate &d, TinyGPSTime &t)
     sprintf(toprint, "%02d:%02d:%02d ", t.hour(), t.minute(), t.second());
     safePrintSerial(toprint);
   }
-
-  //delayGPS(0);
 }
 
 
 
-void printCapteurs()
+void printCapteurs() //affiche toutes les données collectées pour comparer avec ce qui est reçu côté serveur
 {
   dateTimePrint(gps.date,gps.time);
   safePrintSerial(gps.location.lat());
@@ -466,7 +487,7 @@ void printCapteurs()
   safePrintSerialln(F("%"));
   safePrintSerial("Temperature Objet:"); // celle à utiliser avec capteur pointé vers le ciel
   safePrintSerialln(aenvoyer._msg_sensor.temp_object_celsius_sky);
-  safePrintSerial("Temperature Ambiente:");
+  safePrintSerial("Temperature Ambiante:");
   safePrintSerialln(aenvoyer._msg_sensor.temp_ambiant_celsius_sky);
   safePrintSerial(" GPIO : ");
   safePrintSerial(!aenvoyer._msg_sensor.pluie_gpio); // read GPIO at 1 when no rain, 0 when rain
@@ -489,11 +510,14 @@ void printCapteurs()
   safePrintSerialln(aenvoyer._msg_sensor.tvoc_index);
   safePrintSerial("Lux: "); 
   safePrintSerialln(aenvoyer._msg_sensor.lux);
+  safePrintSerial("THUNDER :");
+  safePrintSerialln(thunder_detected);
+  thunder_detected = false;
 
 }
 
-
-void SystemClock_Config(void) //NB si jamais il y a dres problèmes avec le mode deepSleep, commenter cette fonction pour que celle définie en WEAK ailleurs prévale (configuration par défaut)
+//notre configuration d'horloge permet de diminuer au maximum la fréquence (et donc la consommation) tout en gardant les fonctionnalités.
+void SystemClock_Config(void) //NB si jamais il y a des problèmes avec le mode deepSleep, commenter cette fonction pour que celle définie en WEAK ailleurs prévale (configuration par défaut)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
@@ -543,25 +567,36 @@ void InitWiFi()
   if (WiFi.status() == WL_NO_SHIELD) {
     safePrintSerialln("WiFi shield not present");
     // don't continue
-    while (true);
+    while (true){
+      LowPower.deepSleep(0);
+    } //si l'ESP ne répond plus, c'est un problème hardware, la station ne fonctionne plus, ça ne sert à rien de continuer
   }
 
   safePrintSerialln("Connecting to AP ...");
   // attempt to connect to WiFi network
-  while ( status != WL_CONNECTED) {
+  int attempts = 0;
+  while ( status != WL_CONNECTED && attempts < 3) {
     safePrintSerial("Attempting to connect to WPA SSID: ");
     safePrintSerialln(WIFI_AP);
     // Connect to WPA/WPA2 network
     status = WiFi.begin(WIFI_AP, WIFI_PASSWORD);
     delay(500);
+    attempts++;
   }
-  safePrintSerialln("Connected to AP");
+  if(attempts==5)
+  {
+    safePrintSerialln("Couldn't connect to AP");
+  }
+  else
+  {
+    safePrintSerialln("Connected to AP");
+  }
+
 }
 
 void reconnect() {
-  // Loop until we're reconnected
   int attempts = 0;
-  while (!tb.connected() && attempts < 5) {
+  while (!tb.connected() && attempts < 3) {
     safePrintSerial("Connecting to ThingsBoard node ...");
     // Attempt to connect (clientId, username, password)
     if ( tb.connect(thingsboardServer, TOKEN) ) {
@@ -574,4 +609,9 @@ void reconnect() {
       attempts++;
     }
   }
+}
+
+void callback_foudre()
+{
+  thunder_detected = true;
 }
