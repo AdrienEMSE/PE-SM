@@ -173,46 +173,46 @@ void setup()
   digitalWrite(alimentation_lumi,LOW);
   digitalWrite(alimentation_ESP,LOW);
   
-  digitalWrite(alimentation_gps,LOW);//POWER GPS ON (PMOS)
-  uint32_t timer = millis();
-  while(true)
-  {
-    smartDelay(100);
-    if(gps.date.day() != 0)
-    {
-      break;
-      safePrintSerialln("Le gps a atteint le satellite");
-      aenvoyer._msg_location.lat =gps.location.lat();
-      aenvoyer._msg_location.lng =gps.location.lng();
-      aenvoyer.updateCrc_gps();
-      digitalWrite(alimentation_ESP,HIGH);
-      /*if(aenvoyer.safeSendX1(msg_type::gps_msg))
-      {
-        safePrintSerialln("Successfully send GPS");
-      }
-      else
-      {
-        safePrintSerialln("failed to send GPS");
-      }*/
+  
+  // digitalWrite(alimentation_gps,LOW);//POWER GPS ON (PMOS)
+  // uint32_t timer = millis();
+  // while(true)
+  // {
+  //   smartDelay(100);
+  //   if(gps.date.day() != 0)
+  //   {
+  //     break;
+  //     safePrintSerialln("Le gps a atteint le satellite");
+  //     aenvoyer._msg_location.lat =gps.location.lat();
+  //     aenvoyer._msg_location.lng =gps.location.lng();
+  //     aenvoyer.updateCrc_gps();
+  //     digitalWrite(alimentation_ESP,HIGH);
+  //     /*if(aenvoyer.safeSendX1(msg_type::gps_msg))
+  //     {
+  //       safePrintSerialln("Successfully send GPS");
+  //     }
+  //     else
+  //     {
+  //       safePrintSerialln("failed to send GPS");
+  //     }*/
 
-      //Protocole ThingsBoard
-      InitWiFi(); //Initialisation WiFi
-      if ( !tb.connected() ) {
-      reconnect();
-      }
-      tb.sendTelemetryFloat("lattitude", aenvoyer._msg_location.lat);
-      tb.sendTelemetryFloat("longitude", aenvoyer._msg_location.lng);
+  //     //Protocole ThingsBoard
+  //     InitWiFi(); //Initialisation WiFi
+  //     reconnect();
+  //     if ( tb.connected() ) {
+  //       tb.sendTelemetryFloat("lattitude", aenvoyer._msg_location.lat);
+  //       tb.sendTelemetryFloat("longitude", aenvoyer._msg_location.lng);
+  //     }
+  //     digitalWrite(alimentation_ESP,LOW);
+  //   }
+  //   if(millis() > timer + 10000)
+  //   {
+  //     timer = millis();
+  //     safePrintSerialln("Le gps n'a toujours pas atteint le satellite...");
+  //   }
 
-      digitalWrite(alimentation_ESP,LOW);
-    }
-    if(millis() > timer + 10000)
-    {
-      timer = millis();
-      safePrintSerialln("Le gps n'a toujours pas atteint le satellite...");
-    }
 
-
-  }   
+  // }   
 
   digitalWrite(alimentation_gps,HIGH); //POWER GPS OFF (PMOS)
   ss.end(); //il faut end ss avant de passer en mode deepSleep sinon cela introduit des réveils intempestifs pour une raison inconnue
@@ -257,7 +257,7 @@ void setup()
   digitalWrite(alimentation_lumi,HIGH);
   if (capteurLum.begin()) 
   {
-    safePrintSerialln("Found sensor");
+    safePrintSerialln("Found luminosity sensor");
   } 
   else 
   {
@@ -378,7 +378,7 @@ void loop()
 
 
 
-  aenvoyer.updateCrc_sensor();
+  //aenvoyer.updateCrc_sensor();
 
   
   digitalWrite(alimentation_ESP,HIGH);
@@ -393,24 +393,29 @@ void loop()
   digitalWrite(alimentation_ESP,LOW);*/
 
   InitWiFi();
-  if ( !tb.connected() ) {
-    reconnect();
-  }
 
-  tb.sendTelemetryFloat("temp_ambiant_celsius_sky", aenvoyer._msg_sensor.temp_ambiant_celsius_sky);
-  tb.sendTelemetryFloat("temp_object_celsius_sky", aenvoyer._msg_sensor.temp_object_celsius_sky);
-  tb.sendTelemetryFloat("humidite_relative_hdc", aenvoyer._msg_sensor.humidite_relative_hdc);
-  tb.sendTelemetryFloat("temperature_celsius_hdc", aenvoyer._msg_sensor.temperature_celsius_hdc);
-  tb.sendTelemetryFloat("dht_humidite_relative", aenvoyer._msg_sensor.dht_humidite_relative);
-  tb.sendTelemetryFloat("pluie_pourcentage", aenvoyer._msg_sensor.pluie_pourcentage);
-  tb.sendTelemetryFloat("pression_Pa_bmp", aenvoyer._msg_sensor.pression_Pa_bmp);
-  tb.sendTelemetryFloat("temperature_celsius_bmp", aenvoyer._msg_sensor.temperature_celsius_bmp);
-  
-  tb.sendTelemetryFloat("lux", aenvoyer._msg_sensor.lux);
-  tb.sendTelemetryFloat("uv_index_level", aenvoyer._msg_sensor.uv_index_level);
-  tb.sendTelemetryFloat("co2_ppm", aenvoyer._msg_sensor.co2_ppm);
-  tb.sendTelemetryFloat("tvoc_index", aenvoyer._msg_sensor.tvoc_index);
-  tb.sendTelemetryFloat("pluie_gpio", aenvoyer._msg_sensor.pluie_gpio);
+  reconnect();
+
+  if ( tb.connected() )
+  {
+    // ATTENTION: pour une raison inconnue, si la chaîne de caractères est trop longue, l'envoi échoue. Possiblement quelque chose à voir avec une vérification de taille mémoire qui échoue quelque part dans les méandres de la librairie ThingsBoard. Garder des noms courts.
+
+    tb.sendTelemetryFloat("temp_amb_sky", aenvoyer._msg_sensor.temp_ambiant_celsius_sky);
+    tb.sendTelemetryFloat("temp_obj_sky", aenvoyer._msg_sensor.temp_object_celsius_sky);
+    tb.sendTelemetryFloat("humidite_hdc", aenvoyer._msg_sensor.humidite_relative_hdc);
+    tb.sendTelemetryFloat("temp_hdc", aenvoyer._msg_sensor.temperature_celsius_hdc);
+    tb.sendTelemetryFloat("humidite_dht", aenvoyer._msg_sensor.dht_humidite_relative);
+    tb.sendTelemetryFloat("temp_dht", aenvoyer._msg_sensor.dht_temp_celsius);
+    tb.sendTelemetryFloat("pluie_pourcent", aenvoyer._msg_sensor.pluie_pourcentage);
+    tb.sendTelemetryFloat("pression_bmp", aenvoyer._msg_sensor.pression_Pa_bmp);
+    tb.sendTelemetryFloat("temp_bmp", aenvoyer._msg_sensor.temperature_celsius_bmp);
+    
+    tb.sendTelemetryInt("lux", aenvoyer._msg_sensor.lux);
+    tb.sendTelemetryInt("uv_level", aenvoyer._msg_sensor.uv_index_level);
+    tb.sendTelemetryInt("co2_ppm", aenvoyer._msg_sensor.co2_ppm);
+    tb.sendTelemetryInt("tvoc_index", aenvoyer._msg_sensor.tvoc_index);
+    tb.sendTelemetryBool("pluie_gpio", aenvoyer._msg_sensor.pluie_gpio);
+  }
 
 #ifdef DEBUG
   Serial.flush(); 
