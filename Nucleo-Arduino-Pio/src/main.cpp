@@ -79,6 +79,8 @@ static const int dht_pin = D3; // Digital pin connected to the DHT sensor
 static const int anemo_phase_1 = A1, anemo_phase_2 = A2;
 static const int capteur_de_foudre = A3;
 
+static const int pin_big_blue_button = USER_BTN;
+
 static const int alimentation_gps = D8;
 static const int alimentation_dht = D9;
 static const int alimentation_skytemp = D10;
@@ -157,6 +159,8 @@ void setup()
 
   pinMode(wake_ccs,OUTPUT);
   digitalWrite(wake_ccs,HIGH);
+
+  pinMode(pin_big_blue_button,INPUT_PULLUP);
   
   pinMode(alimentation_anemo,OUTPUT);
   pinMode(alimentation_dht,OUTPUT);
@@ -174,45 +178,40 @@ void setup()
   digitalWrite(alimentation_ESP,LOW);
   
   
-  // digitalWrite(alimentation_gps,LOW);//POWER GPS ON (PMOS)
-  // uint32_t timer = millis();
-  // while(true)
-  // {
-  //   smartDelay(100);
-  //   if(gps.date.day() != 0)
-  //   {
-  //     break;
-  //     safePrintSerialln("Le gps a atteint le satellite");
-  //     aenvoyer._msg_location.lat =gps.location.lat();
-  //     aenvoyer._msg_location.lng =gps.location.lng();
-  //     aenvoyer.updateCrc_gps();
-  //     digitalWrite(alimentation_ESP,HIGH);
-  //     /*if(aenvoyer.safeSendX1(msg_type::gps_msg))
-  //     {
-  //       safePrintSerialln("Successfully send GPS");
-  //     }
-  //     else
-  //     {
-  //       safePrintSerialln("failed to send GPS");
-  //     }*/
+  digitalWrite(alimentation_gps,LOW);//POWER GPS ON (PMOS)
+  uint32_t timer = millis();
+  while(true)
+  {
+    smartDelay(100);
+    if(gps.date.day() != 0)
+    {
+      safePrintSerialln("Le gps a atteint le satellite");
+      aenvoyer._msg_location.lat =gps.location.lat();
+      aenvoyer._msg_location.lng =gps.location.lng();
+      aenvoyer.updateCrc_gps();
+      digitalWrite(alimentation_ESP,HIGH);
 
-  //     //Protocole ThingsBoard
-  //     InitWiFi(); //Initialisation WiFi
-  //     reconnect();
-  //     if ( tb.connected() ) {
-  //       tb.sendTelemetryFloat("lattitude", aenvoyer._msg_location.lat);
-  //       tb.sendTelemetryFloat("longitude", aenvoyer._msg_location.lng);
-  //     }
-  //     digitalWrite(alimentation_ESP,LOW);
-  //   }
-  //   if(millis() > timer + 10000)
-  //   {
-  //     timer = millis();
-  //     safePrintSerialln("Le gps n'a toujours pas atteint le satellite...");
-  //   }
+      //Protocole ThingsBoard
+      InitWiFi(); //Initialisation WiFi
+      reconnect();
+      if ( tb.connected() ) {
+        tb.sendTelemetryFloat("lattitude", aenvoyer._msg_location.lat);
+        tb.sendTelemetryFloat("longitude", aenvoyer._msg_location.lng);
+      }
+      digitalWrite(alimentation_ESP,LOW);
+      break;
+    }
+    if(millis() > timer + 10000)
+    {
+      timer = millis();
+      safePrintSerialln("Le gps n'a toujours pas atteint le satellite...");
+    }
+    if( digitalRead(pin_big_blue_button)==LOW) // Si l'utilisateur appuie sur le bouton bleu, on skip le gps à l'init du programme
+    {
+      break;
+    }
 
-
-  // }   
+  }   
 
   digitalWrite(alimentation_gps,HIGH); //POWER GPS OFF (PMOS)
   ss.end(); //il faut end ss avant de passer en mode deepSleep sinon cela introduit des réveils intempestifs pour une raison inconnue
