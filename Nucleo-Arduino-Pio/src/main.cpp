@@ -405,32 +405,32 @@ void loop()
   
   digitalWrite(alimentation_ESP,HIGH);
 
-  InitWiFi();
+  // InitWiFi();
 
-  reconnect();
+  // reconnect();
 
-  if ( tb.connected() ) //on n'envoie des données que si le serveur est accessible
-  {
-    // ATTENTION: pour une raison inconnue, si la chaîne de caractères est trop longue, l'envoi échoue. Possiblement quelque chose à voir avec une vérification de taille mémoire qui échoue quelque part dans les méandres de la librairie ThingsBoard. Garder des noms courts.
+  // if ( tb.connected() ) //on n'envoie des données que si le serveur est accessible
+  // {
+  //   // ATTENTION: pour une raison inconnue, si la chaîne de caractères est trop longue, l'envoi échoue. Possiblement quelque chose à voir avec une vérification de taille mémoire qui échoue quelque part dans les méandres de la librairie ThingsBoard. Garder des noms courts.
 
-    tb.sendTelemetryFloat("temp_amb_sky", aenvoyer._msg_sensor.temp_ambiant_celsius_sky);
-    tb.sendTelemetryFloat("temp_obj_sky", aenvoyer._msg_sensor.temp_object_celsius_sky);
-    tb.sendTelemetryFloat("humidite_hdc", aenvoyer._msg_sensor.humidite_relative_hdc);
-    tb.sendTelemetryFloat("temp_hdc", aenvoyer._msg_sensor.temperature_celsius_hdc);
-    tb.sendTelemetryFloat("humidite_dht", aenvoyer._msg_sensor.dht_humidite_relative);
-    tb.sendTelemetryFloat("temp_dht", aenvoyer._msg_sensor.dht_temp_celsius);
-    tb.sendTelemetryFloat("pluie_pourcent", aenvoyer._msg_sensor.pluie_pourcentage);
-    tb.sendTelemetryFloat("pression_bmp", aenvoyer._msg_sensor.pression_Pa_bmp);
-    tb.sendTelemetryFloat("temp_bmp", aenvoyer._msg_sensor.temperature_celsius_bmp);
+  //   tb.sendTelemetryFloat("temp_amb_sky", aenvoyer._msg_sensor.temp_ambiant_celsius_sky);
+  //   tb.sendTelemetryFloat("temp_obj_sky", aenvoyer._msg_sensor.temp_object_celsius_sky);
+  //   tb.sendTelemetryFloat("humidite_hdc", aenvoyer._msg_sensor.humidite_relative_hdc);
+  //   tb.sendTelemetryFloat("temp_hdc", aenvoyer._msg_sensor.temperature_celsius_hdc);
+  //   tb.sendTelemetryFloat("humidite_dht", aenvoyer._msg_sensor.dht_humidite_relative);
+  //   tb.sendTelemetryFloat("temp_dht", aenvoyer._msg_sensor.dht_temp_celsius);
+  //   tb.sendTelemetryFloat("pluie_pourcent", aenvoyer._msg_sensor.pluie_pourcentage);
+  //   tb.sendTelemetryFloat("pression_bmp", aenvoyer._msg_sensor.pression_Pa_bmp);
+  //   tb.sendTelemetryFloat("temp_bmp", aenvoyer._msg_sensor.temperature_celsius_bmp);
     
-    tb.sendTelemetryInt("lux", aenvoyer._msg_sensor.lux);
-    tb.sendTelemetryInt("uv_level", aenvoyer._msg_sensor.uv_index_level);
-    tb.sendTelemetryInt("co2_ppm", aenvoyer._msg_sensor.co2_ppm);
-    tb.sendTelemetryInt("tvoc_index", aenvoyer._msg_sensor.tvoc_index);
-    tb.sendTelemetryBool("pluie_gpio", aenvoyer._msg_sensor.pluie_gpio);
-    tb.sendTelemetryBool("thunder",thunder_detected);
-    thunder_detected = false;
-  }
+  //   tb.sendTelemetryInt("lux", aenvoyer._msg_sensor.lux);
+  //   tb.sendTelemetryInt("uv_level", aenvoyer._msg_sensor.uv_index_level);
+  //   tb.sendTelemetryInt("co2_ppm", aenvoyer._msg_sensor.co2_ppm);
+  //   tb.sendTelemetryInt("tvoc_index", aenvoyer._msg_sensor.tvoc_index);
+  //   tb.sendTelemetryBool("pluie_gpio", aenvoyer._msg_sensor.pluie_gpio);
+  //   tb.sendTelemetryBool("thunder",thunder_detected);
+  //   thunder_detected = false;
+  // }
 
 #ifdef DEBUG
   Serial.flush(); 
@@ -508,7 +508,7 @@ void printCapteurs() //affiche toutes les données collectées pour comparer ave
   safePrintSerialln(F("%"));
   safePrintSerial("Temperature Objet:"); // celle à utiliser avec capteur pointé vers le ciel
   safePrintSerialln(aenvoyer._msg_sensor.temp_object_celsius_sky);
-  safePrintSerial("Temperature Ambiente:");
+  safePrintSerial("Temperature Ambiante:");
   safePrintSerialln(aenvoyer._msg_sensor.temp_ambiant_celsius_sky);
   safePrintSerial(" GPIO : ");
   safePrintSerial(!aenvoyer._msg_sensor.pluie_gpio); // read GPIO at 1 when no rain, 0 when rain
@@ -531,6 +531,9 @@ void printCapteurs() //affiche toutes les données collectées pour comparer ave
   safePrintSerialln(aenvoyer._msg_sensor.tvoc_index);
   safePrintSerial("Lux: "); 
   safePrintSerialln(aenvoyer._msg_sensor.lux);
+  safePrintSerial("THUNDER :");
+  safePrintSerialln(thunder_detected);
+  thunder_detected = false;
 
 }
 
