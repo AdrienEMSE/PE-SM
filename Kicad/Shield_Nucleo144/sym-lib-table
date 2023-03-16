@@ -1,0 +1,6 @@
+(sym_lib_table
+  (lib (name "NUCLEO-F767ZI")(type "KiCad")(uri "C:/Users/raph/Documents/Librairy KiCAD/Schematic/NUCLEO-F767ZI.kicad_sym")(options "")(descr ""))
+  (lib (name "GPS")(type "KiCad")(uri "C:/Users/raph/Documents/KiCad/6.0/symbols/GPS.kicad_sym")(options "")(descr ""))
+  (lib (name "DHT")(type "KiCad")(uri "C:/Users/raph/Documents/KiCad/6.0/symbols/DHT.kicad_sym")(options "")(descr ""))
+  (lib (name "Capteur")(type "KiCad")(uri "C:/Users/raph/Documents/KiCad/6.0/symbols/Capteur.kicad_sym")(options "")(descr ""))
+)
