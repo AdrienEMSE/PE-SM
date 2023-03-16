@@ -134,9 +134,9 @@ ThingsBoard tb(espClient);
 
 /*----------PROTOTYPES----------*/
 
-void smartDelay(unsigned long ms);
-void dateTimePrint(TinyGPSDate &d, TinyGPSTime &t);
-void printCapteurs();
+void delayGPS(unsigned long ms); //Permet de faire un delay, tout en faisant l'acquisition des données GPS
+void dateTimePrint(TinyGPSDate &d, TinyGPSTime &t); // Fonction d'affichage GPS
+void printCapteurs(); // Fonction d'affichage des capteurs
 
 void reconnect();
 void InitWiFi();
@@ -182,13 +182,13 @@ void setup()
   uint32_t timer = millis();
   while(true)
   {
-    smartDelay(100);
+    delayGPS(100);
     if(gps.date.day() != 0)
     {
       safePrintSerialln("Le gps a atteint le satellite");
       aenvoyer._msg_location.lat =gps.location.lat();
       aenvoyer._msg_location.lng =gps.location.lng();
-      aenvoyer.updateCrc_gps();
+
       digitalWrite(alimentation_ESP,HIGH);
 
       //Protocole ThingsBoard
@@ -357,39 +357,13 @@ void loop()
 
   capteurLum.disable();
 
-/*
-  digitalWrite(alimentation_gps,HIGH); //Power on GPS
-  smartDelay(2000);//DELAY + permet d'utiliser le GPS
-  digitalWrite(alimentation_gps,LOW);   //Power off GPS
-
-  aenvoyer._msg.msg_gps.msg_location.lat = gps.location.lat();
-  aenvoyer._msg.msg_gps.msg_location.lng = gps.location.lng();
-  aenvoyer._msg.msg_gps.msg_date.a = gps.date.year();
-  aenvoyer._msg.msg_gps.msg_date.j = gps.date.day();
-  aenvoyer._msg.msg_gps.msg_date.m = gps.date.month();
-  aenvoyer._msg.msg_gps.msg_time.hour = gps.time.hour();
-  aenvoyer._msg.msg_gps.msg_time.min = gps.time.minute();
-  aenvoyer._msg.msg_gps.msg_time.sec = gps.time.second();
-  safePrintSerialln();*/
-  
 
   printCapteurs();
 
 
-
-  //aenvoyer.updateCrc_sensor();
-
   
   digitalWrite(alimentation_ESP,HIGH);
-  /*if(aenvoyer.safeSendX1(msg_type::sensor_msg))
-  {
-    safePrintSerialln("Successfully sent");
-  }
-  else
-  {
-    safePrintSerialln("failed to send");
-  }
-  digitalWrite(alimentation_ESP,LOW);*/
+
 
   InitWiFi();
 
@@ -433,7 +407,7 @@ void loop()
 
 // This custom version of delay() ensures that the gps object
 // is being "fed".
-void smartDelay(unsigned long ms)
+void delayGPS(unsigned long ms)
 {
   unsigned long start = millis();
   do
@@ -471,7 +445,7 @@ void dateTimePrint(TinyGPSDate &d, TinyGPSTime &t)
     safePrintSerial(toprint);
   }
 
-  //smartDelay(0);
+  //delayGPS(0);
 }
 
 
