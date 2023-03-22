@@ -143,7 +143,7 @@ ThingsBoard tb(espClient);
 /*----------PROTOTYPES----------*/
 
 void callback_foudre();
-void smartDelay(unsigned long ms); //machine d'état GPS
+void delayGPS(unsigned long ms); //machine d'état GPS
 void dateTimePrint(TinyGPSDate &d, TinyGPSTime &t);
 void printCapteurs();
 
