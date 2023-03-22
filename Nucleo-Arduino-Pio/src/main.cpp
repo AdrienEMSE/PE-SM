@@ -80,6 +80,9 @@ static const int dht_pin = D3; //pour communiquer avec le DHT selon un protocole
 static const int anemo_phase_1 = A1, anemo_phase_2 = A2;
 static const int capteur_de_foudre = A3;
 
+static const int ack_uv = PE12;
+
+
 //tous les pins suivants servent à couper l'alimentation aux composants lorsqu'ils ne sont pas utilisés
 static const int pin_big_blue_button = USER_BTN;
 
@@ -179,6 +182,8 @@ void setup()
   pinMode(alimentation_gps,OUTPUT);
 
   pinMode(capteur_de_foudre,INPUT_FLOATING);
+
+  pinMode(ack_uv, INPUT_FLOATING);
   
   
   digitalWrite(alimentation_anemo,LOW);
@@ -249,7 +254,7 @@ void setup()
 
 //idem pour le CCS, sauf que lui est toujours alimenté, on vient lui indiquer s'il faut communiquer par I2C avec le pin WAKE
   digitalWrite(wake_ccs, LOW);
-  safePrintSerialln("CCS811 test"); /* --- SETUP CCS811 on 0x5A ------ */
+  safePrintSerialln("CCS811 test"); /* --- SETUP CCS811 on 0x5B ------ */
   if (!ccs.begin(0x5B))
   {
     safePrintSerialln("Failed to start sensor! Please check your wiring.");
