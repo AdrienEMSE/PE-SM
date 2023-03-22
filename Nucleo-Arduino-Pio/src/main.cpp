@@ -189,7 +189,7 @@ void setup()
   digitalWrite(alimentation_ESP,LOW);
   
   
-  digitalWrite(alimentation_gps,LOW);//POWER GPS ON (PMOS)
+  digitalWrite(alimentation_gps,HIGH);//POWER GPS ON 
   uint32_t timer = millis();
   while(true)
   {
@@ -224,7 +224,7 @@ void setup()
 
   }   
 
-  digitalWrite(alimentation_gps,HIGH); //POWER GPS OFF (PMOS)
+  digitalWrite(alimentation_gps,LOW); //POWER GPS OFF 
   ss.end(); //il faut end ss avant de passer en mode deepSleep sinon cela introduit des réveils intempestifs car l'UART peut déranger le MCU en mode STOP
 
 
