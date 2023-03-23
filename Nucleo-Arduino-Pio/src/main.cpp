@@ -321,8 +321,11 @@ void loop()
 
 //NB:pour interpréter les données, et comprendre plus en détail les modes low-power le cas échéant, se rapporter aux fiches techniques des composants
 
+ //temps de stabilisation?
+ digitalWrite(alimentation_anemo,HIGH);
  Vwest = analogRead(anemo_phase_1);        // Measure west sensor voltage
  Veast = analogRead(anemo_phase_2);        //Measure east sensor voltage
+ digitalWrite(alimentation_anemo,LOW);
  northwind = (Vwest+Veast-Ecalm-Wcalm)/(Wnorth+Enorth-Ecalm-Wcalm)*windspeed; 
  eastwind = (Vwest-Wcalm-(Veast-Ecalm))/(Weast-Wcalm-(Eeast-Ecalm))*windspeed;
  aenvoyer._msg_sensor.wind_speed =round(sqrt(northwind*northwind+eastwind*eastwind)); //Calculate wind speed (m/S)
