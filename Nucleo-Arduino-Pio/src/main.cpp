@@ -100,7 +100,7 @@ static const int pin_big_blue_button = USER_BTN;
 static const int alimentation_gps = D8;
 static const int alimentation_dht = D9;
 static const int alimentation_skytemp = D10;
-static const int alimentation_pluvio = D11;
+static const int alimentation_pluvio = PA7;
 static const int alimentation_lumi = D12;
 static const int alimentation_ESP = D13;
 static const int alimentation_anemo = PE10;
@@ -194,6 +194,7 @@ void setup()
   pinMode(alimentation_lumi,OUTPUT);
   pinMode(alimentation_ESP,OUTPUT);
   pinMode(alimentation_gps,OUTPUT);
+  pinMode(alimentation_pluvio, OUTPUT);
 
   pinMode(capteur_de_foudre,INPUT_FLOATING);
 
