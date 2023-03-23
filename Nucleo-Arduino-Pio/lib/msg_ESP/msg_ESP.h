@@ -84,6 +84,8 @@ typedef struct _msg_ESP // Structure de message à envoyer à l'ESP
   uint16_t tvoc_index; // 2
   uint16_t pluie_gpio; // 2
   uint16_t crc; // 2 // crc doit être le dernier déclaré dans la struct
+  uint16_t wind_speed;
+  uint16_t wind_heading;
 
 } msg_ESP; // le sizeof de msg_ESP correspond à la somme des sizeof de ce qui compose la struct
 // la verification ne marche pas si la somme de ce qui est ajouté n'est pas un multiple de 8 octets 

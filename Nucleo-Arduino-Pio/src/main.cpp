@@ -69,6 +69,17 @@
 #define TOKEN "CZKwRlNJJBqjGpNZ1kL4"
 
 
+/* CALIBRATION ANEMOMETRE */
+
+const int Wcalm = 529;      //West sensor reading in still air
+const int Ecalm = 535;      //East sensor reading in still air
+const int Wnorth = 530;     //West sensor reading in north wind
+const int Enorth = 537;     //East sensor reading in north wind
+const int Weast = 525;       //West sensor reading in east wind
+const int Eeast = 540;      //East sensor reading in east wind
+const float windspeed = 15.3;   //Wind speed during calibration
+
+
 /*----------PINS----------*/
 
 
@@ -113,6 +124,9 @@ uint16_t r, g, b, c, lux; //capteur de luminosité
 // String receive_string;
 // String send_string;
 bool thunder_detected = false;
+
+int Vwest, Veast, wind, heading;
+double northwind, eastwind;
 
 /*----------STRUCT ET CLASSES----------*/
 
@@ -184,6 +198,9 @@ void setup()
   pinMode(capteur_de_foudre,INPUT_FLOATING);
 
   pinMode(ack_uv, INPUT_FLOATING);
+
+  pinMode(anemo_phase_1, INPUT);
+  pinMode(anemo_phase_2, INPUT);
   
   
   digitalWrite(alimentation_anemo,LOW);
@@ -242,7 +259,8 @@ void setup()
   capteurTempHum.begin();
 
 
-//par contre la librairie vérifie la présence du MLX90614 donc il faut l'alimenter pour qu'il réponde
+
+  //par contre la librairie vérifie la présence du MLX90614 donc il faut l'alimenter pour qu'il réponde
   digitalWrite(alimentation_skytemp,HIGH);
   safePrintSerialln("Adafruit MLX90614 Emissivity Setter.\n");
   if (!capteurTempCiel.begin(0x69, &Wire2)) // il faut re-init si on coupe l'alimentation au capteur
@@ -251,6 +269,20 @@ void setup()
     while (1);
   }
   digitalWrite(alimentation_skytemp,LOW);
+
+
+  //même commentaire pour le capteur de luminosité que pour le MLX90614
+  digitalWrite(alimentation_lumi,HIGH);
+  if (capteurLum.begin()) 
+  {
+    safePrintSerialln("Found luminosity sensor");
+  } 
+  else 
+  {
+    safePrintSerialln("No TCS34725 found ... check your connections");
+    while (1);
+  }
+  digitalWrite(alimentation_lumi,LOW);
 
 //idem pour le CCS, sauf que lui est toujours alimenté, on vient lui indiquer s'il faut communiquer par I2C avec le pin WAKE
   digitalWrite(wake_ccs, LOW);
@@ -277,18 +309,6 @@ void setup()
   hdc1080.begin(0x40);
 
 
-//même commentaire pour le capteur de luminosité que pour le MLX90614
-  digitalWrite(alimentation_lumi,HIGH);
-  if (capteurLum.begin()) 
-  {
-    safePrintSerialln("Found luminosity sensor");
-  } 
-  else 
-  {
-    safePrintSerialln("No TCS34725 found ... check your connections");
-    while (1);
-  }
-  digitalWrite(alimentation_lumi,LOW);
 
   LowPower.begin(); //nécessaire pour utiliser le mode deepSleep par la suite
   LowPower.attachInterruptWakeup(capteur_de_foudre,callback_foudre,RISING,DEEP_SLEEP_MODE);
@@ -300,6 +320,17 @@ void loop()
 //et suivie de la coupure de son alimentation (ou du retour dans son mode low-power)
 
 //NB:pour interpréter les données, et comprendre plus en détail les modes low-power le cas échéant, se rapporter aux fiches techniques des composants
+
+ Vwest = analogRead(anemo_phase_1);        // Measure west sensor voltage
+ Veast = analogRead(anemo_phase_2);        //Measure east sensor voltage
+ northwind = (Vwest+Veast-Ecalm-Wcalm)/(Wnorth+Enorth-Ecalm-Wcalm)*windspeed; 
+ eastwind = (Vwest-Wcalm-(Veast-Ecalm))/(Weast-Wcalm-(Eeast-Ecalm))*windspeed;
+ aenvoyer._msg_sensor.wind_speed =round(sqrt(northwind*northwind+eastwind*eastwind)); //Calculate wind speed (m/S)
+ aenvoyer._msg_sensor.wind_heading=270-round(atan2((double)-northwind,(double)-eastwind)*57.3);//*(northwind<0);
+ if (aenvoyer._msg_sensor.wind_heading>359)aenvoyer._msg_sensor.wind_heading=aenvoyer._msg_sensor.wind_heading-360; //Calculate wind direction (degrees)
+
+
+
 
   capteurUV.sleep(false);                       // pas besoin de réinitialiser la bibliothèque lorsque l'on sort du mode low-power
   aenvoyer._msg_sensor.uv_index_level = capteurUV.readUV(); // pour interpréter: https://www.vishay.com/docs/84310/designingveml6070.pdf page 5
@@ -397,7 +428,8 @@ void loop()
   if ( tb.connected() ) //on n'envoie des données que si le serveur est accessible
   {
     // ATTENTION: pour une raison inconnue, si la chaîne de caractères est trop longue, l'envoi échoue. Possiblement quelque chose à voir avec une vérification de taille mémoire qui échoue quelque part dans les méandres de la librairie ThingsBoard. Garder des noms courts.
-
+    tb.sendTelemetryFloat("wind_speed", aenvoyer._msg_sensor.wind_speed);
+    tb.sendTelemetryFloat("wind_heading", aenvoyer._msg_sensor.wind_heading);
     tb.sendTelemetryFloat("temp_amb_sky", aenvoyer._msg_sensor.temp_ambiant_celsius_sky);
     tb.sendTelemetryFloat("temp_obj_sky", aenvoyer._msg_sensor.temp_object_celsius_sky);
     tb.sendTelemetryFloat("humidite_hdc", aenvoyer._msg_sensor.humidite_relative_hdc);
@@ -483,6 +515,10 @@ void printCapteurs() //affiche toutes les données collectées pour comparer ave
   safePrintSerial(gps.location.lat());
   safePrintSerial(F(","));
   safePrintSerialln(gps.location.lng());
+  safePrintSerial("Wind speed: ");
+  safePrintSerialln(aenvoyer._msg_sensor.wind_speed);
+  safePrintSerial("Wind heading: ");
+  safePrintSerialln(aenvoyer._msg_sensor.wind_heading);
   safePrintSerial("UV light level: ");
   safePrintSerialln(aenvoyer._msg_sensor.uv_index_level);
   safePrintSerial(F("Temperature: "));
