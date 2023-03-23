@@ -322,6 +322,9 @@ void loop()
 
 //NB:pour interpréter les données, et comprendre plus en détail les modes low-power le cas échéant, se rapporter aux fiches techniques des composants
 
+
+
+
  //temps de stabilisation?
  digitalWrite(alimentation_anemo,HIGH);
  Vwest = analogRead(anemo_phase_1);        // Measure west sensor voltage
@@ -341,30 +344,7 @@ void loop()
   capteurUV.sleep(true);                        // diminue la conso à 1 microA
 
 
-//NB: protocole de communication du DHT se base sur HAL_GetTick()
-  digitalWrite(alimentation_dht,HIGH);
-  sensors_event_t event;
-  capteurTempHum.temperature().getEvent(&event);
-  if (isnan(event.temperature))
-  {
-    safePrintSerialln(F("Error reading temperature DHT!"));
-  }
-  else
-  {
-    aenvoyer._msg_sensor.dht_temp_celsius = event.temperature;
-  }
-
-  capteurTempHum.humidity().getEvent(&event);
-  if (isnan(event.relative_humidity))
-  {
-    safePrintSerialln(F("Error reading humidity DHT!"));
-  }
-  else
-  {
-    aenvoyer._msg_sensor.dht_humidite_relative = event.relative_humidity;
-  }
-  digitalWrite(alimentation_dht,LOW);
-
+  
 
   digitalWrite(alimentation_skytemp,HIGH);
   capteurTempCiel.begin(0x69, &Wire2);
@@ -409,6 +389,8 @@ void loop()
   digitalWrite(wake_ccs, HIGH);
 
 
+  digitalWrite(alimentation_dht,HIGH);//le DHT a un temps de stabilisation que l'on essaye de rentabiliser en l'alimentant ici et en utilisant le delay déjà présent dans la librairie du TSC34725
+
 
   digitalWrite(alimentation_lumi,HIGH);
   capteurLum.enable();
@@ -416,6 +398,31 @@ void loop()
   aenvoyer._msg_sensor.lux = capteurLum.calculateLux(r, g, b);
   capteurLum.disable();
   digitalWrite(alimentation_lumi,LOW);
+
+
+
+  sensors_event_t event;
+  capteurTempHum.temperature().getEvent(&event);
+  if (isnan(event.temperature))
+  {
+    safePrintSerialln(F("Error reading temperature DHT!"));
+  }
+  else
+  {
+    aenvoyer._msg_sensor.dht_temp_celsius = event.temperature;
+  }
+
+  capteurTempHum.humidity().getEvent(&event);
+  if (isnan(event.relative_humidity))
+  {
+    safePrintSerialln(F("Error reading humidity DHT!"));
+  }
+  else
+  {
+    aenvoyer._msg_sensor.dht_humidite_relative = event.relative_humidity;
+  }
+  digitalWrite(alimentation_dht,LOW);
+
 
 
   printCapteurs(); //n'impriment rien si pas en mode #define DEBUG
