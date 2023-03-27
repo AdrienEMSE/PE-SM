@@ -296,7 +296,6 @@ void setup()
 
   LowPower.begin(); //nécessaire pour utiliser le mode deepSleep par la suite
   LowPower.attachInterruptWakeup(capteur_de_foudre,callback_foudre,RISING,DEEP_SLEEP_MODE);
-  LowPower.deepSleep(10000);
 }
 
 void loop()

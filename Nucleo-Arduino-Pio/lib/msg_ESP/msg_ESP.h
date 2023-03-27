@@ -7,7 +7,7 @@
 
 #define           poly     0x1021          /* crc-ccitt mask */
 
-#define DEBUG
+//#define DEBUG
 
 #ifdef DEBUG
 

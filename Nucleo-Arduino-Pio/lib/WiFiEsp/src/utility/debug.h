@@ -32,7 +32,7 @@ along with The Arduino WiFiEsp library.  If not, see
 #define _ESPLOGLEVEL_ 3
 #endif
  
-#define DEBUG
+//#define DEBUG
  
 #ifdef DEBUG
  
