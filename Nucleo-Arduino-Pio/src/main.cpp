@@ -1,22 +1,3 @@
-// #include "Wire.h"
-// #include "STM32LowPower.h"
-
-// void setup() {
-//   pinMode(LED_BUILTIN, OUTPUT);
-//   LowPower.begin();
-//   Serial.begin(9600);
-// }
-
-// void loop() {
-//   safePrintSerialln("HIGH");
-//   Serial.flush();
-//   digitalWrite(LED_BUILTIN, HIGH);
-//   LowPower.deepSleep(1000);
-//   safePrintSerialln("LOW");
-//   Serial.flush();
-//   digitalWrite(LED_BUILTIN, LOW);
-//   LowPower.deepSleep(1000);
-// }
 
 /*----------INCLUDES----------*/
 
@@ -48,8 +29,7 @@
 
 #include "msg_ESP.h" //classe réalisée par l'équipe PE pour regrouper les données à envoyer au serveur
 
-#include "STM32LowPower.h"
-//#include "STM32LowPower.h" //passer en mode deepSleep
+#include "STM32LowPower.h" //passer en mode deepSleep
 #include "STM32RTC.h" //la RTC permet de sortir du mode deepSleep
 
 #include <WiFiEspClient.h> //communication avec l'ESP pour le wi-fi
@@ -60,13 +40,12 @@
 
 /*----------MACRO----------*/
 //NB: #define DEBUG à activer/désactiver dans debug.h et msg_ESP.h pour activer/désactiver la sortie d'informations utiles sur Serial (UART de debug)
-//TODO FIX
 
 #define DHTTYPE DHT22 // DHT 22 (AM2302)
 
-#define WIFI_AP "POCO_F3"
-#define WIFI_PASSWORD "Sapristi"
-#define TOKEN "CZKwRlNJJBqjGpNZ1kL4"
+#define WIFI_AP "AP_Raspi_Meteo"
+#define WIFI_PASSWORD "stationmeteo13120"
+#define TOKEN "8tx8tMrIbzwJmrSO2dHq"
 
 
 /* CALIBRATION ANEMOMETRE */
@@ -79,7 +58,7 @@ const int Weast = 525;       //West sensor reading in east wind
 const int Eeast = 540;      //East sensor reading in east wind
 const float windspeed = 15.3;   //Wind speed during calibration
 
-
+bool test=true;
 /*----------PINS----------*/
 
 
@@ -115,7 +94,7 @@ static const uint32_t GPSBaud = 9600;    // BAUD GPS
 
 
 //ce qui suit est utilisé avec l'ESP
-char thingsboardServer[] = "thingsboard.cloud";
+char thingsboardServer[] = "10.42.0.1"; //10.42.0.1
 int status = WL_IDLE_STATUS;
 
 /*----------VAR----------*/
@@ -155,7 +134,8 @@ msg_ESP_class aenvoyer(&Serial6); //classe regroupant les données récupérées
 
 // Connection WiFi avec l'Esp
 WiFiEspClient espClient;
-ThingsBoard tb(espClient);
+ThingsBoard* tb = new ThingsBoard(espClient);
+
 
 /*----------PROTOTYPES----------*/
 
@@ -172,7 +152,6 @@ void InitWiFi();
 
 void setup()
 {
-
 #ifdef DEBUG //ne pas oublier de bien choisir le #define DEBUG pour avoir accès ou non à des informations via l'UART du ST-LINK!
   Serial.begin(9600);    // Liaison série vers ordinateur
 #endif
@@ -212,26 +191,30 @@ void setup()
   digitalWrite(alimentation_ESP,LOW);
   
   
-  digitalWrite(alimentation_gps,HIGH);//POWER GPS ON 
+  digitalWrite(alimentation_gps,HIGH);//POWER GPS ON
   uint32_t timer = millis();
   while(true)
   {
     delayGPS(100);
-    if(gps.date.day() != 0)
+    if(gps.date.day() != 0 && abs(gps.location.lat())>0.1 && abs(gps.location.lng())>0.1) //s'assurer que la position est triangulée
     {
       safePrintSerialln("Le gps a atteint le satellite");
       aenvoyer._msg_location.lat =gps.location.lat();
       aenvoyer._msg_location.lng =gps.location.lng();
-
+      digitalWrite(alimentation_gps,LOW); //POWER GPS OFF le plus tôt possible pour économiser
       digitalWrite(alimentation_ESP,HIGH);
 
       //Protocole ThingsBoard
       InitWiFi(); //Initialisation WiFi
       reconnect();
-      if ( tb.connected() ) {
-        tb.sendTelemetryFloat("lattitude", aenvoyer._msg_location.lat);
-        tb.sendTelemetryFloat("longitude", aenvoyer._msg_location.lng);
+      if ( tb->connected() ) {
+        tb->sendTelemetryFloat("latitude", aenvoyer._msg_location.lat);
+        tb->sendTelemetryFloat("longitude", aenvoyer._msg_location.lng);
+        tb->loop();
+        tb->disconnect();
       }
+      WiFi.disconnect();
+      status = WiFi.status(); //!!! impératif pour mettre à jour la machine d'état de l'objet WiFi, sinon i lreste à CONNECTED et ça pose problème au réveil suivant
       digitalWrite(alimentation_ESP,LOW);
       break;
     }
@@ -247,11 +230,11 @@ void setup()
 
   }   
 
-  digitalWrite(alimentation_gps,LOW); //POWER GPS OFF 
+  digitalWrite(alimentation_gps,LOW); //POWER GPS OFF si break;
   ss.end(); //il faut end ss avant de passer en mode deepSleep sinon cela introduit des réveils intempestifs car l'UART peut déranger le MCU en mode STOP
 
 
-//il n'y a pas besoin d'alimenter le VEML6070 et le DHT pour initialiser la communication
+//il n'y a pas besoin d'alimenter le VEML6070, le TCS34725 et le DHT pour initialiser la communication
   safePrintSerialln("VEML6070 Test");
   capteurUV.begin(VEML6070_1_T);
   capteurUV.sleep(true);//le capteur UV est toujours alimenté et passe en low-power par commande I2C
@@ -280,7 +263,7 @@ void setup()
   } 
   else 
   {
-    safePrintSerialln("No TCS34725 found ... check your connections");
+    safePrintSerialln("No TCS34725 found . Maybe it is still in sleep mode from previous run. Toggle ON/OFF whole system.");
     while (1);
   }
   digitalWrite(alimentation_lumi,LOW);
@@ -313,10 +296,13 @@ void setup()
 
   LowPower.begin(); //nécessaire pour utiliser le mode deepSleep par la suite
   LowPower.attachInterruptWakeup(capteur_de_foudre,callback_foudre,RISING,DEEP_SLEEP_MODE);
+  LowPower.deepSleep(10000);
 }
 
 void loop()
 {
+
+
 //NB: la communication avec un capteur doit toujours être précédée de son alimentation (pin d'alimentation) ou de son réveil du mode low-power
 //et suivie de la coupure de son alimentation (ou du retour dans son mode low-power)
 
@@ -338,22 +324,23 @@ void loop()
 
 
 
-
+  //pas de stabilisation pour celui-ci
   capteurUV.sleep(false);                       // pas besoin de réinitialiser la bibliothèque lorsque l'on sort du mode low-power
   aenvoyer._msg_sensor.uv_index_level = capteurUV.readUV(); // pour interpréter: https://www.vishay.com/docs/84310/designingveml6070.pdf page 5
   capteurUV.sleep(true);                        // diminue la conso à 1 microA
 
 
-  
 
   digitalWrite(alimentation_skytemp,HIGH);
+  delay(140); //délai nécessaire à l'établissement du capteur, si on lit "NaN" ou que les trames de skytemp ne sont plus reçues, jouer sur ce délai
+  aenvoyer._msg_sensor.temp_ambiant_celsius_sky = capteurTempCiel.readAmbientTempC();
   capteurTempCiel.begin(0x69, &Wire2);
   aenvoyer._msg_sensor.temp_object_celsius_sky = capteurTempCiel.readObjectTempC();
-  aenvoyer._msg_sensor.temp_ambiant_celsius_sky = capteurTempCiel.readAmbientTempC();
   digitalWrite(alimentation_skytemp,LOW);
 
 
   digitalWrite(alimentation_pluvio,HIGH);
+  delay(15); //stabilisation pour obtenir une mesure cohérente (sinon le % lu est trop grand)
   uint32_t rain_read = analogRead(pinPluvioAnalog);
   int rain_GPIO = digitalRead(pinPluvioGPIO);
   digitalWrite(alimentation_pluvio,LOW);
@@ -425,41 +412,43 @@ void loop()
 
 
 
-  printCapteurs(); //n'impriment rien si pas en mode #define DEBUG
+  printCapteurs(); //n'imprime rien si pas en mode #define DEBUG
 
 
   
   digitalWrite(alimentation_ESP,HIGH);
 
-
   InitWiFi();
-
   reconnect();
 
-  if ( tb.connected() ) //on n'envoie des données que si le serveur est accessible
+
+  if ( tb->connected() ) //on n'envoie des données que si le serveur est accessible
   {
     // ATTENTION: pour une raison inconnue, si la chaîne de caractères est trop longue, l'envoi échoue. Possiblement quelque chose à voir avec une vérification de taille mémoire qui échoue quelque part dans les méandres de la librairie ThingsBoard. Garder des noms courts.
-    tb.sendTelemetryFloat("wind_speed", aenvoyer._msg_sensor.wind_speed);
-    tb.sendTelemetryFloat("wind_heading", aenvoyer._msg_sensor.wind_heading);
-    tb.sendTelemetryFloat("temp_amb_sky", aenvoyer._msg_sensor.temp_ambiant_celsius_sky);
-    tb.sendTelemetryFloat("temp_obj_sky", aenvoyer._msg_sensor.temp_object_celsius_sky);
-    tb.sendTelemetryFloat("humidite_hdc", aenvoyer._msg_sensor.humidite_relative_hdc);
-    tb.sendTelemetryFloat("temp_hdc", aenvoyer._msg_sensor.temperature_celsius_hdc);
-    tb.sendTelemetryFloat("humidite_dht", aenvoyer._msg_sensor.dht_humidite_relative);
-    tb.sendTelemetryFloat("temp_dht", aenvoyer._msg_sensor.dht_temp_celsius);
-    tb.sendTelemetryFloat("pluie_pourcent", aenvoyer._msg_sensor.pluie_pourcentage);
-    tb.sendTelemetryFloat("pression_bmp", aenvoyer._msg_sensor.pression_Pa_bmp);
-    tb.sendTelemetryFloat("temp_bmp", aenvoyer._msg_sensor.temperature_celsius_bmp);
+    tb->sendTelemetryFloat("wind_speed", aenvoyer._msg_sensor.wind_speed);
+    tb->sendTelemetryFloat("wind_heading", aenvoyer._msg_sensor.wind_heading);
+    tb->sendTelemetryFloat("temp_amb_sky", aenvoyer._msg_sensor.temp_ambiant_celsius_sky);
+    tb->sendTelemetryFloat("temp_obj_sky", aenvoyer._msg_sensor.temp_object_celsius_sky);
+    tb->sendTelemetryFloat("humidite_hdc", aenvoyer._msg_sensor.humidite_relative_hdc);
+    tb->sendTelemetryFloat("temp_hdc", aenvoyer._msg_sensor.temperature_celsius_hdc);
+    tb->sendTelemetryFloat("humidite_dht", aenvoyer._msg_sensor.dht_humidite_relative);
+    tb->sendTelemetryFloat("temp_dht", aenvoyer._msg_sensor.dht_temp_celsius);
+    tb->sendTelemetryFloat("pluie_pourcent", aenvoyer._msg_sensor.pluie_pourcentage);
+    tb->sendTelemetryFloat("pression_bmp", aenvoyer._msg_sensor.pression_Pa_bmp);
+    tb->sendTelemetryFloat("temp_bmp", aenvoyer._msg_sensor.temperature_celsius_bmp);
     
-    tb.sendTelemetryInt("lux", aenvoyer._msg_sensor.lux);
-    tb.sendTelemetryInt("uv_level", aenvoyer._msg_sensor.uv_index_level);
-    tb.sendTelemetryInt("co2_ppm", aenvoyer._msg_sensor.co2_ppm);
-    tb.sendTelemetryInt("tvoc_index", aenvoyer._msg_sensor.tvoc_index);
-    tb.sendTelemetryBool("pluie_gpio", aenvoyer._msg_sensor.pluie_gpio);
-    tb.sendTelemetryBool("thunder",thunder_detected);
+    tb->sendTelemetryInt("lux", aenvoyer._msg_sensor.lux);
+    tb->sendTelemetryInt("uv_level", aenvoyer._msg_sensor.uv_index_level);
+    tb->sendTelemetryInt("co2_ppm", aenvoyer._msg_sensor.co2_ppm);
+    tb->sendTelemetryInt("tvoc_index", aenvoyer._msg_sensor.tvoc_index);
+    tb->sendTelemetryBool("pluie_gpio", !aenvoyer._msg_sensor.pluie_gpio); //1 when rain, 0 when no rain
+    tb->sendTelemetryBool("thunder",thunder_detected);
     thunder_detected = false;
+    tb->loop();
+    tb->disconnect();
   }
-
+  WiFi.disconnect();
+  status = WiFi.status(); //!!! impératif pour mettre à jour la machine d'état de l'objet WiFi, sinon i lreste à CONNECTED et ça pose problème au réveil suivant
 #ifdef DEBUG
   Serial.flush(); 
 #endif
@@ -523,9 +512,9 @@ void dateTimePrint(TinyGPSDate &d, TinyGPSTime &t)
 void printCapteurs() //affiche toutes les données collectées pour comparer avec ce qui est reçu côté serveur
 {
   dateTimePrint(gps.date,gps.time);
-  safePrintSerial(gps.location.lat());
+  safePrintSerial(aenvoyer._msg_location.lat);
   safePrintSerial(F(","));
-  safePrintSerialln(gps.location.lng());
+  safePrintSerialln(aenvoyer._msg_location.lng);
   safePrintSerial("Wind speed: ");
   safePrintSerialln(aenvoyer._msg_sensor.wind_speed);
   safePrintSerial("Wind heading: ");
@@ -649,10 +638,10 @@ void InitWiFi()
 
 void reconnect() {
   int attempts = 0;
-  while (!tb.connected() && attempts < 3) {
+  while (!tb->connected() && attempts < 3) {
     safePrintSerial("Connecting to ThingsBoard node ...");
     // Attempt to connect (clientId, username, password)
-    if ( tb.connect(thingsboardServer, TOKEN) ) {
+    if ( tb->connect(thingsboardServer, TOKEN) ) {
       safePrintSerialln( "[DONE]" );
     } else {
       safePrintSerial( "[FAILED]" );
