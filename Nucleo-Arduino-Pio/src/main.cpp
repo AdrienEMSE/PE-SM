@@ -247,6 +247,9 @@ void setup()
   //par contre la librairie vérifie la présence du MLX90614 donc il faut l'alimenter pour qu'il réponde
   digitalWrite(alimentation_skytemp,HIGH);
   safePrintSerialln("Adafruit MLX90614 Emissivity Setter.\n");
+  #ifndef DEBUG
+  delay((50)); //délai nécessaire à l'établissement du capteur, qui est en mode debug passé à écrire sur Serial 
+  #endif
   if (!capteurTempCiel.begin(0x69, &Wire2)) // il faut re-init si on coupe l'alimentation au capteur
   {
     safePrintSerialln("Error connecting to MLX sensor. Check wiring.");
