@@ -1,5 +1,16 @@
+## Obtenir les données des capteurs indoor (Nouvelle version):
 
-## Utilisation de mosquitto
+Lors de l'allumage de la Raspberry, brancher en USB la Nucleo. La LED rouge va rester allumée au lieu de clignoter, signifiant que la carte est prête.
+
+Télécharger sur la Raspberry Pi le script "get_indoor_data.py", et l'exécuter. Le programme va automatiquement écrire sur ThingsBoard les données des capteurs.
+
+Le délai entre chaque enregistrement de données peut être modifié dans le script.
+
+
+
+## Obtenir les données des capteurs indoor (Ancienne version):
+
+### Utilisation de mosquitto
 Le serveur mosquitto s'exécute automatiquement lors de l'allumage de la raspberry.
 Mettre la raspberry en mode "Hotspot" pour permettre à l'ESP8266 de se connecter.
 
@@ -15,7 +26,7 @@ Changer les paramètres de MQTT (par exemple ajouter mdp) :
 
 <code>sudo nano /etc/mosquitto/mosquitto.conf</code>
 
-## Retranscription des messages MQTT en csv
+### Retranscription des messages MQTT en csv
 
 Le script python <strong>MQTT_to_csv.py</strong> enregistre les données reçues sur le serveur MQTT dans le fichier <strong>outdoor_station.csv</strong>.
 
@@ -26,6 +37,6 @@ Pour compiler la librairie:
 
 <code>g++ -shared -o clib.so msg_ESP.cpp</code>
 
-## Enregistrement des données des capteurs 
+### Enregistrement des données des capteurs 
 
 Le script python <strong>TxRx_Nucleo.py</strong> permet de récuperer à intervalle régulier (modifiable dans le script) les données des capteurs connectées à la Nucleo L432KC. Ces données sont enregistrées dans <strong>indoor_sensors.csv</strong>.
