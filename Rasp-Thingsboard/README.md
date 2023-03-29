@@ -1,4 +1,4 @@
-##Obtenir les données des capteurs indoor (Nouvelle version):
+## Obtenir les données des capteurs indoor (Nouvelle version):
 
 Lors de l'allumage de la Raspberry, brancher en USB la Nucleo. La LED rouge va rester allumée au lieu de clignoter, signifiant que la carte est prête.
 
